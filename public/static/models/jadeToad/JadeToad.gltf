@@ -1,0 +1,180 @@
+{
+  "accessors": [
+    {
+      "bufferView": 0,
+      "componentType": 5125,
+      "count": 19368,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 3389,
+      "max": [
+        0.868343889713287,
+        0.997458159923553,
+        1.0
+      ],
+      "min": [
+        -0.868343949317932,
+        -0.997458159923553,
+        -1.0
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "componentType": 5126,
+      "count": 3389,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5126,
+      "count": 3389,
+      "type": "VEC2"
+    }
+  ],
+  "asset": {
+    "generator": "Substance Painter 2019.2.2",
+    "version": "2.0"
+  },
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteLength": 77472,
+      "target": 34963
+    },
+    {
+      "buffer": 0,
+      "byteLength": 40668,
+      "byteOffset": 77472,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 40668,
+      "byteOffset": 118140,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 27112,
+      "byteOffset": 158808,
+      "target": 34962
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 185920,
+      "uri": "JadeToad.bin"
+    }
+  ],
+  "images": [
+    {
+      "uri": "Toad_baseColor.png"
+    },
+    {
+      "uri": "Toad_occlusionRoughnessMetallic.png"
+    },
+    {
+      "uri": "Toad_normal.png"
+    }
+  ],
+  "materials": [
+    {
+      "alphaMode": "OPAQUE",
+      "name": "Toad",
+      "normalTexture": {
+        "index": 2
+      },
+      "occlusionTexture": {
+        "index": 1
+      },
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 0
+        },
+        "metallicRoughnessTexture": {
+          "index": 1
+        }
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "Toad_Final_Low:Group28800",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 2,
+            "POSITION": 1,
+            "TEXCOORD_0": 3
+          },
+          "indices": 0,
+          "material": 0,
+          "mode": 4
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "children": [
+        1
+      ],
+      "name": "Toad_Final_Scale_Low.obj",
+      "scale": [
+        20.3465023040771,
+        20.3465023040771,
+        20.3465023040771
+      ],
+      "translation": [
+        0.00174522399902344,
+        -2.3692684173584,
+        -1.78227424621582
+      ]
+    },
+    {
+      "children": [
+        2
+      ],
+      "name": "g Toad_Final_Low:Group28800"
+    },
+    {
+      "mesh": 0,
+      "name": "Toad_Final_Low:Group28800"
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9985,
+      "wrapS": 10497,
+      "wrapT": 10497
+    }
+  ],
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "sampler": 0,
+      "source": 0
+    },
+    {
+      "sampler": 0,
+      "source": 1
+    },
+    {
+      "sampler": 0,
+      "source": 2
+    }
+  ]
+}
