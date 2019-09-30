@@ -63,7 +63,6 @@ function Model({ url, envMap }) {
     new GLTFLoader().load(url, object => {
       object.scene.traverse(function(child) {
         if (child instanceof THREE.Mesh) {
-          console.log(child.material.normalScale.y);
           child.material.normalScale.y = -1;
           setModels(prevState => [...prevState, child]);
         }
@@ -163,7 +162,7 @@ export default function Main() {
 
           new RGBELoader()
             .setDataType(THREE.UnsignedByteType)
-            .load("/static/textures/lakes_2k.hdr", function(texture) {
+            .load("/static/textures/leadenhall_market_1k.hdr", function(texture) {
               const cubemapGenerator = new EquirectangularToCubeGenerator(
                 texture,
                 { resolution: 1024 }
