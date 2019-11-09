@@ -4,7 +4,6 @@ import { Canvas, useFrame, extend, useThree } from "react-three-fiber";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
-import { EquirectangularToCubeGenerator } from "three/examples/jsm/loaders/EquirectangularToCubeGenerator.js";
 import { PMREMGenerator } from "three/examples/jsm/pmrem/PMREMGenerator.js";
 import { PMREMCubeUVPacker } from "three/examples/jsm/pmrem/PMREMCubeUVPacker.js";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer";
@@ -111,8 +110,7 @@ function Model({ url, envMap }) {
       }}
       geometry={model.geometry}
       material={model.material}
-    >
-    </mesh>
+    ></mesh>
   ));
 }
 
@@ -139,14 +137,19 @@ export default function Main() {
             .load("/static/textures/leadenhall_market_1k.hdr", function(
               texture
             ) {
-              const cubemapGenerator = new EquirectangularToCubeGenerator(
-                texture,
-                { resolution: 1024 }
-              );
-              cubemapGenerator.update(gl);
+              const options = {
+                generateMipmaps: false,
+                minFilter: THREE.LinearFilter,
+                magFilter: THREE.LinearFilter
+              };
+              const cubemapGenerator = new THREE.WebGLRenderTargetCube(
+                512,
+                512,
+                options
+              ).fromEquirectangularTexture(gl, texture);
 
               const pmremGenerator = new PMREMGenerator(
-                cubemapGenerator.renderTarget.texture
+                cubemapGenerator.texture
               );
               pmremGenerator.update(gl);
 
@@ -158,7 +161,7 @@ export default function Main() {
               texture.dispose();
               pmremGenerator.dispose();
               pmremCubeUVPacker.dispose();
-              scene.background = cubemapGenerator.renderTarget;
+              scene.background = cubemapGenerator;
               setTextureCube(pmremCubeUVPacker.CubeUVRenderTarget.texture);
             });
         }}
