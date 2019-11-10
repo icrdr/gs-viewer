@@ -255,6 +255,7 @@ Volume.prototype = {
 
     const quaternion = new Quaternion();
     quaternion.setFromUnitVectors(new Vector3(0, 0, 1), axis);
+
     const XYZtoSlice = new Matrix4()
       .multiply(
         new Matrix4().makeTranslation(
@@ -297,7 +298,7 @@ Volume.prototype = {
       ) {
         return volume.data[volume.access(x, y, z)];
       } else {
-        return -10000;
+        return -100000;
       }
     };
 

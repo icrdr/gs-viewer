@@ -16,6 +16,12 @@ import { Switch, Button } from "antd";
 
 extend({ OrbitControls });
 
+function promisifyLoader(loader, url, onProgress) {
+  return new Promise((resolve, reject) => {
+    loader.load(url, resolve, onProgress, reject);
+  });
+}
+
 function Effect({ stats }) {
   useFrame(() => {
     stats.update();
@@ -23,13 +29,14 @@ function Effect({ stats }) {
   return null;
 }
 
-function Slices({ volume, index, gui }) {
+function Slices({ volume, gui }) {
   const [slice, setSlice] = useState();
   const [cube, setCube] = useState();
   const sliceRef = useRef();
   const grpRef = useRef();
-  const helpRef = useRef();
+
   const { camera, gl } = useThree();
+
   useEffect(() => {
     //cube helper
     const geometry = new THREE.BoxBufferGeometry(
@@ -37,8 +44,31 @@ function Slices({ volume, index, gui }) {
       volume.RASDimensions[1],
       volume.RASDimensions[2]
     );
-    const material = new THREE.MeshBasicMaterial();
-    setCube(new THREE.Mesh(geometry, material));
+
+    const urls = ["./static/test.vert", "./static/test.frag"];
+    const promises = urls.map(url => {
+      return promisifyLoader(new THREE.FileLoader(), url);
+    });
+
+    // const FBXPromiseLoader = promisifyLoader(
+    //   new THREE.FileLoader(),
+    //   "./static/test_vert.glsl"
+    // );
+    Promise.all(promises).then(res => {
+      console.log(res);
+      const shader = THREE.ShaderLib.basic;
+      const material = new THREE.ShaderMaterial({
+        uniforms: THREE.UniformsUtils.merge([
+          shader.uniforms,
+          { diffuse: { value: new THREE.Color(0xff0000) } }
+        ]),
+        vertexShader: res[0],
+        fragmentShader: res[1]
+      });
+
+      setCube(new THREE.Mesh(geometry, material));
+    });
+
     const depth = 1;
     //create slice plane
     const slice = volume.extractSlice(
@@ -49,16 +79,12 @@ function Slices({ volume, index, gui }) {
     setSlice(slice);
 
     gui.add(grpRef.current.userData, "followCamera").onChange(e => {
-      grpRef.current.userData.followCamera=e
+      grpRef.current.userData.followCamera = e;
     });
 
-    gui
-      .add(slice, "index", 0, 500, 1)
-      .name("Slice Index");
+    gui.add(slice, "index", 0, 500, 1).name("Slice Index");
 
-    gui
-      .add(slice, "depth", 0.2, 1, 0.1)
-      .name("Slice Render Depth");
+    gui.add(slice, "depth", 0.2, 1, 0.1).name("Slice Render Depth");
 
     gui
       .add(volume, "lowerThreshold", volume.min, volume.max, 1)
@@ -85,14 +111,14 @@ function Slices({ volume, index, gui }) {
   return (
     <group ref={grpRef} userData={{ followCamera: true }}>
       {cube && <boxHelper args={[cube]} />}
+      {cube && <primitive object={cube} />}
       {slice && <primitive ref={sliceRef} object={slice.mesh} />}
-      <axesHelper ref={helpRef} args={[20]} position={[50, 20, 5]} />
-      <VTKmodel
+      {/* <VTKmodel
         url="./static/models/vtk/liver.vtk"
         offset={[0,0,0]}
         // offset={[-volume.offset[0], -volume.offset[1], -volume.offset[2]]}
         gui={gui}
-      />
+      /> */}
     </group>
   );
 }
@@ -115,23 +141,19 @@ function VTKmodel({ url, offset, gui }) {
     // eslint-disable-next-line
   }, [geo]);
 
-  if (geo) {
-    return (
-      <mesh
-        ref={meshRef}
-        geometry={geo}
-        material={
-          new THREE.MeshStandardMaterial({
-            color: new THREE.Color("white"),
-            transparent: true
-          })
-        }
-        position={offset}
-      ></mesh>
-    );
-  } else {
-    return null;
-  }
+  return geo ? (
+    <mesh
+      ref={meshRef}
+      geometry={geo}
+      material={
+        new THREE.MeshStandardMaterial({
+          color: new THREE.Color("white"),
+          transparent: true
+        })
+      }
+      position={offset}
+    ></mesh>
+  ) : null;
 }
 
 function Control() {
@@ -204,7 +226,11 @@ export default function Main() {
         <Effect stats={statsRef} />
         {volume && <Slices volume={volume} gui={guiRef} />}
         <directionalLight intensity={3} position={[0, 5, 3]} castShadow />
-        <hemisphereLight intensity={1} skyColor={0xffffbb} groundColor={0x080820}/>
+        <hemisphereLight
+          intensity={1}
+          skyColor={0xffffbb}
+          groundColor={0x080820}
+        />
         <axesHelper args={[50]} position={[0, 0, 0]} />
       </Canvas>
       <Button className="pos:a bottom:0" block onClick={() => setFlash(!flash)}>

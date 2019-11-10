@@ -68,6 +68,7 @@ var VolumeSlice = function(volume, index, axis, depth) {
   var canvasMap = new Texture(this.canvas);
   canvasMap.minFilter = LinearFilter;
   canvasMap.wrapS = canvasMap.wrapT = ClampToEdgeWrapping;
+  
   var material = new MeshBasicMaterial({
     map: canvasMap,
     side: DoubleSide,
