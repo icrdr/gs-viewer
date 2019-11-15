@@ -7,10 +7,14 @@ import {
   DefaultLoadingManager,
   FileLoader,
   Matrix4,
+  HalfFloatType,
+  RedFormat,
+  LinearFilter,
+  DataTexture3D,
   Vector3
 } from "three/build/three.module.js";
 import { Zlib } from "three/examples/jsm/libs/gunzip.module.min.js";
-import { Volume } from "../misc/Volume.js";
+import { VolumeTexture } from "../classes/VolumeTexture";
 
 var NRRDLoader = function(manager) {
   this.manager = manager !== undefined ? manager : DefaultLoadingManager;
@@ -272,29 +276,30 @@ NRRDLoader.prototype = {
       _data = _copy;
     }
     // .. let's use the underlying array buffer
-    _data = _data.buffer;
 
-    var volume = new Volume();
-    volume.header = headerObject;
-    //
-    // parse the (unzipped) data to a datastream of the correct type
-    //
-    volume.data = new headerObject.__array(_data);
     console.log(headerObject);
-    // get the min and max intensities
-    var min_max = volume.computeMinMax();
-    var min = min_max[0];
-    var max = min_max[1];
 
-    // attach the scalar range to the volume
-    volume.windowLow = min;
-    volume.windowHigh = max;
+    const width = headerObject.sizes[0];
+    const height = headerObject.sizes[1];
+    const depth = headerObject.sizes[2];
 
-    // get the image dimensions
+    const volumeData = new Uint16Array(_data.length);
 
-    volume.xLength = headerObject.sizes[0];
-    volume.yLength = headerObject.sizes[1];
-    volume.zLength = headerObject.sizes[2];
+    const rawData = new headerObject.__array(_data.buffer);
+    const { min, max } = this.computeMinMax(rawData);
+
+    rawData.map((v, i) => {
+      v = v - min;
+      volumeData[i] = v > 31744 ? 31744 : v;
+    });
+
+    var volume = new VolumeTexture(volumeData, width, height, depth);
+
+    volume.type = HalfFloatType;
+    volume.format = RedFormat;
+
+    volume.minFilter = volume.magFilter = LinearFilter;
+    volume.unpackAlignment = 1;
 
     // spacing
     var spacingX = new Vector3(
@@ -312,10 +317,6 @@ NRRDLoader.prototype = {
       headerObject.vectors[2][1],
       headerObject.vectors[2][2]
     ).length();
-    volume.spacing = [spacingX, spacingY, spacingZ];
-
-    // Create XYZtoRAS matrix
-    volume.matrix = new Matrix4();
 
     var _spaceX = 1;
     var _spaceY = 1;
@@ -329,20 +330,21 @@ NRRDLoader.prototype = {
     }
 
     //offset
-    volume.offset = [
+    volume.offset3.set(
       _spaceX *
         (parseFloat(headerObject.space_origin[0]) +
-          (spacingX * volume.xLength) / 2),
+          (spacingX * headerObject.sizes[0]) / 2),
       _spaceY *
         (parseFloat(headerObject.space_origin[1]) +
-          (spacingY * volume.yLength) / 2),
+          (spacingY * headerObject.sizes[1]) / 2),
       _spaceZ *
         (parseFloat(headerObject.space_origin[2]) +
-          (spacingZ * volume.zLength) / 2)
-    ];
+          (spacingZ * headerObject.sizes[2]) / 2)
+    );
 
+    // Create XYZtoRAS matrix
     if (!headerObject.vectors) {
-      volume.matrix.set(
+      volume.matrix4.set(
         _spaceX,
         0,
         0,
@@ -362,8 +364,7 @@ NRRDLoader.prototype = {
       );
     } else {
       var v = headerObject.vectors;
-
-      volume.matrix.set(
+      volume.matrix4.set(
         _spaceX * v[0][0],
         _spaceX * v[1][0],
         _spaceX * v[2][0],
@@ -382,28 +383,7 @@ NRRDLoader.prototype = {
         1
       );
     }
-
-    volume.inverseMatrix = new Matrix4();
-    volume.inverseMatrix.getInverse(volume.matrix);
-    volume.RASDimensions = new Vector3(
-      volume.xLength,
-      volume.yLength,
-      volume.zLength
-    )
-      .applyMatrix4(volume.matrix)
-      .round()
-      .toArray()
-      .map(Math.abs);
-
-    // .. and set the default threshold
-    // only if the threshold was not already set
-    if (volume.lowerThreshold === -Infinity) {
-      volume.lowerThreshold = min;
-    }
-    if (volume.upperThreshold === Infinity) {
-      volume.upperThreshold = max;
-    }
-
+    console.log(volume);
     return volume;
   },
 
@@ -424,6 +404,21 @@ NRRDLoader.prototype = {
     }
 
     return output;
+  },
+
+  computeMinMax: function(data) {
+    var min = Infinity;
+    var max = -Infinity;
+
+    for (let i = 0; i < data.length; i++) {
+      if (!isNaN(data[i])) {
+        var value = data[i];
+        min = Math.min(min, value);
+        max = Math.max(max, value);
+      }
+    }
+
+    return { min, max };
   },
 
   fieldFunctions: {

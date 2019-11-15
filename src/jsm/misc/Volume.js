@@ -251,60 +251,15 @@ Volume.prototype = {
   extractPerpendicularPlane: function(axis, index, depth) {
     const volume = this;
     const planeWidth = 500;
-    const iLength = Math.round(depth * planeWidth);
 
     const quaternion = new Quaternion();
-    quaternion.setFromUnitVectors(new Vector3(0, 0, 1), axis);
-
-    const XYZtoSlice = new Matrix4()
-      .multiply(
-        new Matrix4().makeTranslation(
-          volume.xLength / 2,
-          volume.yLength / 2,
-          volume.zLength / 2
-        )
-      )
-      .multiply(volume.inverseMatrix)
-      .multiply(new Matrix4().makeRotationFromQuaternion(quaternion))
-      .multiply(
-        new Matrix4().makeScale(1 / depth, -1 / depth, 1 / depth)
-      )
-      .multiply(
-        new Matrix4().makeTranslation(-iLength / 2, -iLength / 2, -iLength / 2)
-      );
+    quaternion.setFromUnitVectors(new Vector3(0, 0, 1), new Vector3(1, 1, 1).normalize());
 
     const planeMatrix = new Matrix4()
       .multiply(new Matrix4().makeRotationFromQuaternion(quaternion))
-      .multiply(new Matrix4().makeTranslation(0, 0, (index - iLength / 2)/depth));
-
-    const getValue = (i, j) => {
-      const posInSlice = new Vector3(i, j, index);
-      // slice space to XYZ space ==> SlicetoXYZ matrix.
-      // for pos not change in world space, the pos has to apply inverse of SlicetoXYZ matrix, which is XYZtoSlice.
-      const posInXYZ = posInSlice.clone().applyMatrix4(XYZtoSlice);
-
-      const x = Math.round(posInXYZ.x);
-      const y = Math.round(posInXYZ.y);
-      const z = Math.round(posInXYZ.z);
-      
-      //clamping
-      if (
-        x >= 0 &&
-        x <= volume.xLength &&
-        y >= 0 &&
-        y <= volume.yLength &&
-        z >= 0 &&
-        z <= volume.zLength
-      ) {
-        return volume.data[volume.access(x, y, z)];
-      } else {
-        return -100000;
-      }
-    };
+      .multiply(new Matrix4().makeTranslation(0, 0, (index - planeWidth / 2)));
 
     return {
-      iLength: iLength,
-      getValue: getValue,
       matrix: planeMatrix,
       planeWidth: planeWidth
     };

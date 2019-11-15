@@ -11,6 +11,9 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { NRRDLoader } from "../jsm/loaders/NRRDLoader";
 import { VTKLoader } from "three/examples/jsm/loaders/VTKLoader";
 
+import { VolumeSlice } from "../jsm/classes/VolumeSlice";
+import { vShader } from "../jsm/shaders/vShader";
+
 // react gui
 import { Switch, Button } from "antd";
 
@@ -40,62 +43,55 @@ function Slices({ volume, gui }) {
   useEffect(() => {
     //cube helper
     const geometry = new THREE.BoxBufferGeometry(
-      volume.RASDimensions[0],
-      volume.RASDimensions[1],
-      volume.RASDimensions[2]
+      volume.image.width,
+      volume.image.height,
+      volume.image.depth
     );
 
-    const urls = ["./static/test.vert", "./static/test.frag"];
-    const promises = urls.map(url => {
-      return promisifyLoader(new THREE.FileLoader(), url);
+    const uniforms = THREE.UniformsUtils.clone(vShader.uniforms);
+    uniforms["volume_data"].value = volume;
+    uniforms["xyz_to_ras_m4"].value = volume.matrix4;
+
+    const material = new THREE.ShaderMaterial({
+      transparent: true,
+      uniforms: uniforms,
+      vertexShader: vShader.vertexShader,
+      fragmentShader: vShader.fragmentShader
     });
 
-    // const FBXPromiseLoader = promisifyLoader(
-    //   new THREE.FileLoader(),
-    //   "./static/test_vert.glsl"
-    // );
-    Promise.all(promises).then(res => {
-      console.log(res);
-      const shader = THREE.ShaderLib.basic;
-      const material = new THREE.ShaderMaterial({
-        uniforms: THREE.UniformsUtils.merge([
-          shader.uniforms,
-          { diffuse: { value: new THREE.Color(0xff0000) } }
-        ]),
-        vertexShader: res[0],
-        fragmentShader: res[1]
-      });
+    const mesh = new THREE.Mesh(geometry, material);
+    // mesh.applyMatrix(volume.matrix4);
+    setCube(mesh);
 
-      setCube(new THREE.Mesh(geometry, material));
-    });
-
-    const depth = 1;
-    //create slice plane
-    const slice = volume.extractSlice(
-      new THREE.Vector3(0, 1, 1).normalize(),
+    const slice = new VolumeSlice(
+      volume,
       0,
-      depth
+      new THREE.Vector3(1, 1, 1).normalize()
     );
     setSlice(slice);
+
+    gui.add(slice, "index", 0, slice._sliceWidth, 1).name("Slice Index");
+    gui.add(slice, "min", volume.min, volume.max, 1).name("min");
+    gui.add(slice, "max", volume.min, volume.max, 1).name("max");
 
     gui.add(grpRef.current.userData, "followCamera").onChange(e => {
       grpRef.current.userData.followCamera = e;
     });
 
-    gui.add(slice, "index", 0, 500, 1).name("Slice Index");
+    // gui.add(slice, "index", 0, 500, 1).name("Slice Index");
 
-    gui.add(slice, "depth", 0.2, 1, 0.1).name("Slice Render Depth");
+    // gui.add(slice, "depth", 0.2, 1, 0.1).name("Slice Render Depth");
 
-    gui
-      .add(volume, "lowerThreshold", volume.min, volume.max, 1)
-      .name("Lower Threshold");
-    gui
-      .add(volume, "upperThreshold", volume.min, volume.max, 1)
-      .name("Upper Threshold");
-    gui.add(volume, "windowLow", volume.min, volume.max, 1).name("Window Low");
-    gui
-      .add(volume, "windowHigh", volume.min, volume.max, 1)
-      .name("Window High");
+    // gui
+    //   .add(volume, "lowerThreshold", volume.min, volume.max, 1)
+    //   .name("Lower Threshold");
+    // gui
+    //   .add(volume, "upperThreshold", volume.min, volume.max, 1)
+    //   .name("Upper Threshold");
+    // gui.add(volume, "windowLow", volume.min, volume.max, 1).name("Window Low");
+    // gui
+    //   .add(volume, "windowHigh", volume.min, volume.max, 1)
+    //   .name("Window High");
     // eslint-disable-next-line
   }, []);
 
@@ -103,22 +99,25 @@ function Slices({ volume, gui }) {
     var vector = new THREE.Vector3(0, 0, 1);
     if (grpRef.current.userData.followCamera) {
       vector.applyQuaternion(camera.quaternion);
-      slice.axis.copy(vector);
+      slice.axis = vector;
     }
-    slice.repaint();
+
+    if (cube) {
+      cube.material.uniforms["eye_pos"].value = camera.position;
+    }
   });
 
   return (
     <group ref={grpRef} userData={{ followCamera: true }}>
       {cube && <boxHelper args={[cube]} />}
       {cube && <primitive object={cube} />}
-      {slice && <primitive ref={sliceRef} object={slice.mesh} />}
-      {/* <VTKmodel
-        url="./static/models/vtk/liver.vtk"
-        offset={[0,0,0]}
-        // offset={[-volume.offset[0], -volume.offset[1], -volume.offset[2]]}
+      {/* {slice && <primitive ref={sliceRef} object={slice.mesh} />} */}
+      <VTKmodel
+        url="./static/models/vtk/k.vtk"
+        // offset={[-9,-169,344]}
+        offset={[-volume.offset3.x, -volume.offset3.y, -volume.offset3.z]}
         gui={gui}
-      /> */}
+      />
     </group>
   );
 }
@@ -180,7 +179,7 @@ function Camera(props) {
 
   return (
     <>
-      <orthographicCamera ref={camRef} {...props} />
+      <perspectiveCamera ref={camRef} {...props} />
       {camRef && <Control />}
     </>
   );
@@ -209,15 +208,15 @@ export default function Main() {
 
     const loader = new NRRDLoader();
     loader.setPath("./static/slices/");
-    loader.load("liver.nrrd", function(v) {
-      setVolume(v);
-      console.log(v);
+    loader.load("k.nrrd", function(volumeTexture) {
+      setVolume(volumeTexture);
     });
   };
 
   return (
     <>
       <Canvas
+        gl2
         onCreated={({ gl }) => {
           init(gl);
         }}

@@ -9,15 +9,27 @@
  * @param   {number}       [depth=1]
  * @see Volume
  */
-
+import { testShader } from "../shaders/testShader";
 import {
-  ClampToEdgeWrapping,
   DoubleSide,
   LinearFilter,
   Mesh,
+  ShaderMaterial,
+  RedFormat,
+  FloatType,
+  UnsignedIntType,
+  UnsignedByteType,
+  Matrix4,
+  ShortType,
+  IntType,
+  HalfFloatType,
+  DataTexture3D,
+  Quaternion,
   MeshBasicMaterial,
+  UniformsUtils,
   PlaneBufferGeometry,
-  Texture
+  Texture,
+  Vector3
 } from "three/build/three.module.js";
 
 var VolumeSlice = function(volume, index, axis, depth) {
@@ -36,6 +48,7 @@ var VolumeSlice = function(volume, index, axis, depth) {
     },
     set: function(value) {
       index = value;
+      this.mesh.material.uniforms["u_index"].value = index;
       return index;
     }
   });
@@ -49,35 +62,65 @@ var VolumeSlice = function(volume, index, axis, depth) {
    */
   this.depth = depth || 1;
 
-  /**
-   * @member {HTMLCanvasElement} canvas The final canvas used for the texture
-   */
-  /**
-   * @member {CanvasRenderingContext2D} ctx Context of the canvas
-   */
-  this.canvas = document.createElement("canvas");
-  /**
-   * @member {HTMLCanvasElement} canvasBuffer The intermediary canvas used to paint the data
-   */
-  /**
-   * @member {CanvasRenderingContext2D} ctxBuffer Context of the canvas buffer
-   */
-  this.canvasBuffer = document.createElement("canvas");
-  this.updateGeometry();
+  const v_min = volume.windowLow;
+  const v_max = volume.windowHigh;
+  console.log(volume.data);
+  const float_volume = new Uint16Array(volume.data.length);
+  volume.data.map((v, i) => {
+    // float_volume[i] = (v - v_min) / (v_max - v_min);
+    float_volume[i] = v>31744?31744:v;
+  });
+  console.log(float_volume);
+  var texture = new DataTexture3D(
+    float_volume,
+    volume.xLength,
+    volume.yLength,
+    volume.zLength
+  );
 
-  var canvasMap = new Texture(this.canvas);
-  canvasMap.minFilter = LinearFilter;
-  canvasMap.wrapS = canvasMap.wrapT = ClampToEdgeWrapping;
+  texture.type = HalfFloatType;
+  texture.format = RedFormat;
+
+  texture.minFilter = texture.magFilter = LinearFilter;
+  texture.unpackAlignment = 1;
+  texture.needsUpdate = true;
+  console.log(texture);
+  const quaternion = new Quaternion();
+  quaternion.setFromUnitVectors(new Vector3(0, 0, 1), new Vector3(1, 1, 1).normalize());
+
   
-  var material = new MeshBasicMaterial({
-    map: canvasMap,
+  const planeWidth = 500;
+  const XYZtoSlice = new Matrix4()
+    .multiply(new Matrix4().makeTranslation(0.5, 0.5, 0.5))
+    .multiply(volume.inverseMatrix)
+    .multiply(
+      new Matrix4().makeScale(
+        planeWidth / volume.xLength,
+        planeWidth / volume.yLength,
+        planeWidth / volume.zLength
+      )
+    )
+    .multiply(new Matrix4().makeRotationFromQuaternion(quaternion))
+    .multiply(new Matrix4().makeTranslation(-0.5, -0.5, -0.5));
+
+  console.log(XYZtoSlice);
+  const uniforms = UniformsUtils.clone(testShader.uniforms);
+  uniforms["u_data"].value = texture;
+  uniforms["u_m4"].value = XYZtoSlice;
+  uniforms["u_index"].value = index;
+
+  var material2 = new ShaderMaterial({
     side: DoubleSide,
     alphaTest: 0.5,
+    uniforms: uniforms,
+    vertexShader: testShader.vertexShader,
+    fragmentShader: testShader.fragmentShader
   });
+
   /**
    * @member {Mesh} mesh The mesh ready to get used in the scene
    */
-  this.mesh = new Mesh(this.geometry, material);
+  this.mesh = new Mesh(this.geometry, material2);
 
   /**
    * @member {Number} needUpdateMesh Width of slice in the original coordinate system, corresponds to the width of the buffer canvas
@@ -109,83 +152,7 @@ VolumeSlice.prototype = {
     if (this.needUpdateMesh) {
       this.updateGeometry();
     }
-
-    var iLength = this.iLength,
-      getValue = this.getValue,
-      volume = this.volume,
-      canvas = this.canvasBuffer,
-      ctx = this.ctxBuffer;
-
-    // get the imageData and pixel array from the canvas
-    var imgData = ctx.getImageData(0, 0, iLength, iLength);
-    var data = imgData.data;
-    var volumeData = volume.data;
-    var upperThreshold = volume.upperThreshold;
-    var lowerThreshold = volume.lowerThreshold;
-    var windowLow = volume.windowLow;
-    var windowHigh = volume.windowHigh;
-
-    // manipulate some pixel elements
-    var pixelCount = 0;
-
-    if (volume.dataType === "label") {
-      //this part is currently useless but will be used when colortables will be handled
-      for (var j = 0; j < iLength; j++) {
-        for (var i = 0; i < iLength; i++) {
-          var label = getValue(i, j);
-          label =
-            label >= this.colorMap.length
-              ? (label % this.colorMap.length) + 1
-              : label;
-          var color = this.colorMap[label];
-          data[4 * pixelCount] = (color >> 24) & 0xff;
-          data[4 * pixelCount + 1] = (color >> 16) & 0xff;
-          data[4 * pixelCount + 2] = (color >> 8) & 0xff;
-          data[4 * pixelCount + 3] = color & 0xff;
-          pixelCount++;
-        }
-      }
-    } else {
-      for (var j = 0; j < iLength; j++) {
-        for (var i = 0; i < iLength; i++) {
-          var value = getValue(i, j);
-          var alpha = 0xff;
-          //apply threshold
-          alpha =
-            upperThreshold >= value ? (lowerThreshold <= value ? alpha : 0) : 0;
-          //apply window level
-          value = Math.floor(
-            (255 * (value - windowLow)) / (windowHigh - windowLow)
-          );
-          value = value > 255 ? 255 : value < 0 ? 0 : value | 0;
-
-          data[4 * pixelCount] = value;
-          data[4 * pixelCount + 1] = value;
-          data[4 * pixelCount + 2] = value;
-          data[4 * pixelCount + 3] = alpha;
-          if (i < 10 && j < 1) {
-            data[4 * pixelCount] = 255;
-            data[4 * pixelCount + 1] = 255;
-            data[4 * pixelCount + 2] = 255;
-          }
-          pixelCount++;
-        }
-      }
-    }
-    ctx.putImageData(imgData, 0, 0);
-    this.ctx.drawImage(
-      canvas,
-      0,
-      0,
-      iLength,
-      iLength,
-      0,
-      0,
-      this.canvas.width,
-      this.canvas.height
-    );
-
-    this.mesh.material.map.needsUpdate = true;
+    // this.mesh.material.map.needsUpdate = true;
   },
 
   /**
@@ -199,16 +166,7 @@ VolumeSlice.prototype = {
       this.index,
       this.depth
     );
-    this.getValue = extracted.getValue;
-    this.iLength = extracted.iLength;
     this.matrix = extracted.matrix;
-
-    this.canvas.width = extracted.planeWidth;
-    this.canvas.height = extracted.planeWidth;
-    this.canvasBuffer.width = this.iLength;
-    this.canvasBuffer.height = this.iLength;
-    this.ctx = this.canvas.getContext("2d");
-    this.ctxBuffer = this.canvasBuffer.getContext("2d");
 
     if (this.geometry) this.geometry.dispose(); // dispose existing geometry
 

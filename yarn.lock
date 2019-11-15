@@ -885,10 +885,17 @@
   dependencies:
     regenerator-runtime "^0.13.2"
 
-"@babel/runtime@^7.0.0", "@babel/runtime@^7.1.2", "@babel/runtime@^7.3.1", "@babel/runtime@^7.3.4", "@babel/runtime@^7.4.0", "@babel/runtime@^7.4.2", "@babel/runtime@^7.4.5", "@babel/runtime@^7.6.3":
+"@babel/runtime@^7.0.0", "@babel/runtime@^7.1.2", "@babel/runtime@^7.3.1", "@babel/runtime@^7.3.4", "@babel/runtime@^7.4.0", "@babel/runtime@^7.4.2", "@babel/runtime@^7.4.5":
   version "7.6.3"
   resolved "https://registry.npmjs.org/@babel/runtime/-/runtime-7.6.3.tgz#935122c74c73d2240cafd32ddb5fc2a6cd35cf1f"
   integrity sha512-kq6anf9JGjW8Nt5rYfEuGRaEAaH1mkv3Bbu6rYvLOpPh/RusSJXuKPEAoZ7L7gybZkchE8+NV5g9vKF4AGAtsA==
+  dependencies:
+    regenerator-runtime "^0.13.2"
+
+"@babel/runtime@^7.7.1":
+  version "7.7.2"
+  resolved "https://registry.npmjs.org/@babel/runtime/-/runtime-7.7.2.tgz#111a78002a5c25fc8e3361bedc9529c696b85a6a"
+  integrity sha512-JONRbXbTXc9WQE2mAZd1p0Z3DZ/6vaQIkgYMSTP3KjRCyd7rCZCcfhCyX+YjwcKxcZ82UrxbRD358bpExNgrjw==
   dependencies:
     regenerator-runtime "^0.13.2"
 
@@ -1122,6 +1129,11 @@
     "@types/istanbul-lib-coverage" "^2.0.0"
     "@types/istanbul-reports" "^1.1.1"
     "@types/yargs" "^13.0.0"
+
+"@juggle/resize-observer@^2.4.0":
+  version "2.4.0"
+  resolved "https://registry.npmjs.org/@juggle/resize-observer/-/resize-observer-2.4.0.tgz#8693fc08e49625eabd146751870e95d7a1eb556f"
+  integrity sha512-iBxD3plYdW4+yryivUWtfHy+B2wwQsdET6eviABx9QJKjokf0lBOZH853I31sbccskPsagtulW0ik1SWDek4RQ==
 
 "@mrmlnc/readdir-enhanced@^2.2.1":
   version "2.2.1"
@@ -3260,6 +3272,11 @@ data-urls@^1.0.0, data-urls@^1.1.0:
     abab "^2.0.0"
     whatwg-mimetype "^2.2.0"
     whatwg-url "^7.0.0"
+
+debounce@^1.2.0:
+  version "1.2.0"
+  resolved "https://registry.npmjs.org/debounce/-/debounce-1.2.0.tgz#44a540abc0ea9943018dc0eaa95cce87f65cd131"
+  integrity sha512-mYtLl1xfZLi1m4RtQYlZgJUNQjl4ZxVnHzIR8nLLgi4q1YT8o/WM+MK/f8yfcc9s5Ir5zRaPZyZU6xs1Syoocg==
 
 debug@2.6.9, debug@^2.2.0, debug@^2.3.3, debug@^2.6.0, debug@^2.6.8, debug@^2.6.9:
   version "2.6.9"
@@ -9075,17 +9092,27 @@ react-spring@^8.0.27:
     "@babel/runtime" "^7.3.1"
     prop-types "^15.5.8"
 
-react-three-fiber@^3.0.0-beta.15:
-  version "3.0.7"
-  resolved "https://registry.npmjs.org/react-three-fiber/-/react-three-fiber-3.0.7.tgz#d913273c84a3997265f9d4e7559cc7efbff69fb1"
-  integrity sha512-LU6ZU7/RlnqjPV3nfAafn497iJ3hl9XqSuhRfppp6scz/z4TIetJtdKdw2y41JpU/O1inKMtSd0CWXVzbSrCtw==
+react-three-fiber@^3.0.13:
+  version "3.0.13"
+  resolved "https://registry.npmjs.org/react-three-fiber/-/react-three-fiber-3.0.13.tgz#1c06838851c1b2b2397051281d6e99a77a856c7a"
+  integrity sha512-osRXChTJozzx9pp/XsjVal0ImCO5a/cFERXb1T/LCTZAywgZmror1BDVjKOA3EsuA3ZNxWCUZrxYhSMRaB9vaw==
   dependencies:
-    "@babel/runtime" "^7.6.3"
+    "@babel/runtime" "^7.7.1"
     react-promise-suspense "^0.3.1"
     react-reconciler "0.23.0"
+    react-use-measure "^1.1.2"
     resize-observer-polyfill "^1.5.1"
     scheduler "0.17.0"
     tiny-emitter "^2.1.0"
+
+react-use-measure@^1.1.2:
+  version "1.1.2"
+  resolved "https://registry.npmjs.org/react-use-measure/-/react-use-measure-1.1.2.tgz#65d8fd8305a7152fdda9a1c946122d77f6fc6247"
+  integrity sha512-rntsBVZz6Z4eihQNo+PZ4tn+U/ApRi6Ax7f6ed/6a+iZ4RcztzGBG3ni+oaWA08Bk2EmyLr1IO3iFlUuCi/1Pg==
+  dependencies:
+    "@juggle/resize-observer" "^2.4.0"
+    debounce "^1.2.0"
+    resize-observer-polyfill "^1.5.1"
 
 react@^16.9.0:
   version "16.11.0"
