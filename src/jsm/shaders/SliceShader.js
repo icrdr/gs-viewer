@@ -25,34 +25,38 @@ varying vec2 vUv;
 float halfFloatBitsToIntValue(float inputx){
   int step = 0;
   bool isneg = inputx < 0.0;
+  float val = 0.0;
 
   if (isinf(inputx)){
     if (isneg){
-      return 64512.0;
+      val = 64512.0;
     }else{
-      return 31744.0;
+      val = 31744.0;
     }
-  }else if(abs(inputx)>=1.0){
-    while(inputx/2.0 >= 1.0) {
-      inputx /= 2.0;
-      step ++;
-    }
-  }else if(abs(inputx)>0.0){
-    while(inputx < 1.0) {
-      inputx *= 2.0;
-      step --;
-    }
+  }else if(inputx == 0.0){
+    val = 0.0;
   }else{
-    return 0.0;
+    if(abs(inputx)>=1.0){
+      while(inputx/2.0 >= 1.0) {
+        inputx /= 2.0;
+        step ++;
+      }
+    }else{
+      while(inputx < 1.0) {
+        inputx *= 2.0;
+        step --;
+      }
+    }
+    float exponent= float(step+15);
+
+    if (exponent>0.0){
+      val = (float(step+15) + inputx -1.0)*1024.0 + float(isneg) * 32768.0;
+    }else{
+      val = pow(2.0,exponent-1.0)*inputx*1024.0 + float(isneg) * 32768.0;
+    }
   }
 
-  float exponent= float(step+15);
-
-  if (exponent>0.0){
-    return (float(step+15) + inputx -1.0)*1024.0 + float(isneg) * 32768.0;
-  }else{
-    return pow(2.0,exponent-1.0)*inputx*1024.0 + float(isneg) * 32768.0;
-  }
+  return val;
 }
 
 vec4 getV(vec3 pos){

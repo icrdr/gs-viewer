@@ -894,7 +894,7 @@
 
 "@babel/runtime@^7.7.1":
   version "7.7.2"
-  resolved "https://registry.npmjs.org/@babel/runtime/-/runtime-7.7.2.tgz#111a78002a5c25fc8e3361bedc9529c696b85a6a"
+  resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.7.2.tgz#111a78002a5c25fc8e3361bedc9529c696b85a6a"
   integrity sha512-JONRbXbTXc9WQE2mAZd1p0Z3DZ/6vaQIkgYMSTP3KjRCyd7rCZCcfhCyX+YjwcKxcZ82UrxbRD358bpExNgrjw==
   dependencies:
     regenerator-runtime "^0.13.2"
@@ -1132,7 +1132,7 @@
 
 "@juggle/resize-observer@^2.4.0":
   version "2.4.0"
-  resolved "https://registry.npmjs.org/@juggle/resize-observer/-/resize-observer-2.4.0.tgz#8693fc08e49625eabd146751870e95d7a1eb556f"
+  resolved "https://registry.yarnpkg.com/@juggle/resize-observer/-/resize-observer-2.4.0.tgz#8693fc08e49625eabd146751870e95d7a1eb556f"
   integrity sha512-iBxD3plYdW4+yryivUWtfHy+B2wwQsdET6eviABx9QJKjokf0lBOZH853I31sbccskPsagtulW0ik1SWDek4RQ==
 
 "@mrmlnc/readdir-enhanced@^2.2.1":
@@ -3275,7 +3275,7 @@ data-urls@^1.0.0, data-urls@^1.1.0:
 
 debounce@^1.2.0:
   version "1.2.0"
-  resolved "https://registry.npmjs.org/debounce/-/debounce-1.2.0.tgz#44a540abc0ea9943018dc0eaa95cce87f65cd131"
+  resolved "https://registry.yarnpkg.com/debounce/-/debounce-1.2.0.tgz#44a540abc0ea9943018dc0eaa95cce87f65cd131"
   integrity sha512-mYtLl1xfZLi1m4RtQYlZgJUNQjl4ZxVnHzIR8nLLgi4q1YT8o/WM+MK/f8yfcc9s5Ir5zRaPZyZU6xs1Syoocg==
 
 debug@2.6.9, debug@^2.2.0, debug@^2.3.3, debug@^2.6.0, debug@^2.6.8, debug@^2.6.9:
@@ -8968,14 +8968,14 @@ react-lifecycles-compat@^3.0.2, react-lifecycles-compat@^3.0.4:
 
 react-promise-suspense@^0.3.1:
   version "0.3.1"
-  resolved "https://registry.npmjs.org/react-promise-suspense/-/react-promise-suspense-0.3.1.tgz#b4eb428c36efb27f0a3df265de4647acdb27aa1a"
+  resolved "https://registry.yarnpkg.com/react-promise-suspense/-/react-promise-suspense-0.3.1.tgz#b4eb428c36efb27f0a3df265de4647acdb27aa1a"
   integrity sha512-3EE8QdWReri6kfwNQZW/y24x1jm2oaOGhy+/7A9z7eVMfPAofZJCqx7BuGLr7jok/NxclGL98AhLY6aHcDSTkA==
   dependencies:
     fast-deep-equal "^2.0.1"
 
 react-reconciler@0.23.0:
   version "0.23.0"
-  resolved "https://registry.npmjs.org/react-reconciler/-/react-reconciler-0.23.0.tgz#5f0bfc35dda030b0220c07de11f93131c5d6db63"
+  resolved "https://registry.yarnpkg.com/react-reconciler/-/react-reconciler-0.23.0.tgz#5f0bfc35dda030b0220c07de11f93131c5d6db63"
   integrity sha512-vV0KlLimP9a/NuRcM6GRVakkmT6MKSzhfo8K72fjHMnlXMOhz9GlPe+/tCp5CWBkg+lsMUt/CR1nypJBTPfwuw==
   dependencies:
     loose-envify "^1.1.0"
@@ -9094,7 +9094,7 @@ react-spring@^8.0.27:
 
 react-three-fiber@^3.0.13:
   version "3.0.13"
-  resolved "https://registry.npmjs.org/react-three-fiber/-/react-three-fiber-3.0.13.tgz#1c06838851c1b2b2397051281d6e99a77a856c7a"
+  resolved "https://registry.yarnpkg.com/react-three-fiber/-/react-three-fiber-3.0.13.tgz#1c06838851c1b2b2397051281d6e99a77a856c7a"
   integrity sha512-osRXChTJozzx9pp/XsjVal0ImCO5a/cFERXb1T/LCTZAywgZmror1BDVjKOA3EsuA3ZNxWCUZrxYhSMRaB9vaw==
   dependencies:
     "@babel/runtime" "^7.7.1"
@@ -9107,7 +9107,7 @@ react-three-fiber@^3.0.13:
 
 react-use-measure@^1.1.2:
   version "1.1.2"
-  resolved "https://registry.npmjs.org/react-use-measure/-/react-use-measure-1.1.2.tgz#65d8fd8305a7152fdda9a1c946122d77f6fc6247"
+  resolved "https://registry.yarnpkg.com/react-use-measure/-/react-use-measure-1.1.2.tgz#65d8fd8305a7152fdda9a1c946122d77f6fc6247"
   integrity sha512-rntsBVZz6Z4eihQNo+PZ4tn+U/ApRi6Ax7f6ed/6a+iZ4RcztzGBG3ni+oaWA08Bk2EmyLr1IO3iFlUuCi/1Pg==
   dependencies:
     "@juggle/resize-observer" "^2.4.0"
@@ -10401,7 +10401,7 @@ timsort@^0.3.0:
 
 tiny-emitter@^2.1.0:
   version "2.1.0"
-  resolved "https://registry.npmjs.org/tiny-emitter/-/tiny-emitter-2.1.0.tgz#1d1a56edfc51c43e863cbb5382a72330e3555423"
+  resolved "https://registry.yarnpkg.com/tiny-emitter/-/tiny-emitter-2.1.0.tgz#1d1a56edfc51c43e863cbb5382a72330e3555423"
   integrity sha512-NB6Dk1A9xgQPMoGqC5CVXn123gWyte215ONT5Pp5a0yt4nlEoO1ZWeCwpncaekPHXO60i47ihFnZPiRPjRMq4Q==
 
 tiny-invariant@^1.0.2:

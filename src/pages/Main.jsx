@@ -43,9 +43,9 @@ function Slices({ volume, gui }) {
   useEffect(() => {
     //cube helper
     const geometry = new THREE.BoxBufferGeometry(
-      volume.image.width,
-      volume.image.height,
-      volume.image.depth
+      256,
+      256,
+      113
     );
 
     const uniforms = THREE.UniformsUtils.clone(vShader.uniforms);
@@ -74,6 +74,10 @@ function Slices({ volume, gui }) {
     gui.add(slice, "min", volume.min, volume.max, 1).name("min");
     gui.add(slice, "max", volume.min, volume.max, 1).name("max");
 
+    gui.add(grpRef.current.userData, "value_t",0,1,0.02).onChange(e => {
+      mesh.material.uniforms['value_t'].value = e;
+    });
+
     gui.add(grpRef.current.userData, "followCamera").onChange(e => {
       grpRef.current.userData.followCamera = e;
     });
@@ -89,20 +93,22 @@ function Slices({ volume, gui }) {
   });
 
   return (
-    <group ref={grpRef} userData={{ followCamera: true }}>
+    <group ref={grpRef} userData={{ followCamera: true, value_t:0.5}}>
       {cube && <boxHelper args={[cube]} />}
       {cube && <primitive object={cube} />}
       {/* {slice && <primitive ref={sliceRef} object={slice.mesh} />} */}
-      <VTKmodel
-        url="./static/models/vtk/liver.vtk"
-        // offset={[-volume.offset3.x, -volume.offset3.y, -volume.offset3.z]}
-        gui={gui}
-      />
+      <group
+        position={[-volume.offset3.x, -volume.offset3.y, -volume.offset3.z]}
+      >
+        {/* <VTKmodel url="./static/models/vtk/k.vtk" gui={gui} />
+        <VTKmodel url="./static/models/vtk/k_a.vtk" gui={gui} />
+        <VTKmodel url="./static/models/vtk/k_v.vtk" gui={gui} /> */}
+      </group>
     </group>
   );
 }
 
-function VTKmodel({ url, offset=[0,0,0], gui }) {
+function VTKmodel({ url, offset = [0, 0, 0], gui }) {
   const [geo, setGeo] = useState();
   const meshRef = useRef();
   useEffect(() => {

@@ -11,6 +11,7 @@ import {
   RedFormat,
   LinearFilter,
   DataTexture3D,
+  RepeatWrapping,
   Vector3
 } from "three/build/three.module.js";
 import { Zlib } from "three/examples/jsm/libs/gunzip.module.min.js";
@@ -297,7 +298,7 @@ NRRDLoader.prototype = {
 
     volume.type = HalfFloatType;
     volume.format = RedFormat;
-
+    volume.wrapR = volume.wrapS = volume.wrapT = RepeatWrapping
     volume.minFilter = volume.magFilter = LinearFilter;
     volume.unpackAlignment = 1;
 
