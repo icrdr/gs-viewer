@@ -77,21 +77,6 @@ function Slices({ volume, gui }) {
     gui.add(grpRef.current.userData, "followCamera").onChange(e => {
       grpRef.current.userData.followCamera = e;
     });
-
-    // gui.add(slice, "index", 0, 500, 1).name("Slice Index");
-
-    // gui.add(slice, "depth", 0.2, 1, 0.1).name("Slice Render Depth");
-
-    // gui
-    //   .add(volume, "lowerThreshold", volume.min, volume.max, 1)
-    //   .name("Lower Threshold");
-    // gui
-    //   .add(volume, "upperThreshold", volume.min, volume.max, 1)
-    //   .name("Upper Threshold");
-    // gui.add(volume, "windowLow", volume.min, volume.max, 1).name("Window Low");
-    // gui
-    //   .add(volume, "windowHigh", volume.min, volume.max, 1)
-    //   .name("Window High");
     // eslint-disable-next-line
   }, []);
 
@@ -101,10 +86,6 @@ function Slices({ volume, gui }) {
       vector.applyQuaternion(camera.quaternion);
       slice.axis = vector;
     }
-
-    if (cube) {
-      cube.material.uniforms["eye_pos"].value = camera.position;
-    }
   });
 
   return (
@@ -113,16 +94,15 @@ function Slices({ volume, gui }) {
       {cube && <primitive object={cube} />}
       {/* {slice && <primitive ref={sliceRef} object={slice.mesh} />} */}
       <VTKmodel
-        url="./static/models/vtk/k.vtk"
-        // offset={[-9,-169,344]}
-        offset={[-volume.offset3.x, -volume.offset3.y, -volume.offset3.z]}
+        url="./static/models/vtk/liver.vtk"
+        // offset={[-volume.offset3.x, -volume.offset3.y, -volume.offset3.z]}
         gui={gui}
       />
     </group>
   );
 }
 
-function VTKmodel({ url, offset, gui }) {
+function VTKmodel({ url, offset=[0,0,0], gui }) {
   const [geo, setGeo] = useState();
   const meshRef = useRef();
   useEffect(() => {
@@ -208,7 +188,7 @@ export default function Main() {
 
     const loader = new NRRDLoader();
     loader.setPath("./static/slices/");
-    loader.load("k.nrrd", function(volumeTexture) {
+    loader.load("liver.nrrd", function(volumeTexture) {
       setVolume(volumeTexture);
     });
   };

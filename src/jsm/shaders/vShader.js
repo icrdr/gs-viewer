@@ -2,21 +2,22 @@ import { Matrix4, Vector3 } from "three/build/three.module.js";
 import { VolumeTexture } from "../classes/VolumeTexture";
 
 const vert = `
-uniform vec3 eye_pos;
 uniform vec3 volume_scale;
 
-varying vec3 vray_dir;
 varying vec3 transformed_eye;
-varying vec3 vpos;
-
+varying vec3 vposition;
+varying mat4 vmodelMatrix;
+vec3 applyMatrix4(vec3 v3, mat4 m){
+  return (m*vec4(v3,1.0)).xyz;
+}
 void main() {
   // Translate the cube to center it at the origin.
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); 
 
   // Compute eye position and ray directions in the unit cube space
-	transformed_eye = eye_pos / volume_scale;
-  vray_dir = position - eye_pos;
-  vpos = position;
+	transformed_eye = cameraPosition / volume_scale;
+  vposition = applyMatrix4(position, modelMatrix);
+  vmodelMatrix = modelMatrix;
 }
 `;
 const frag = `
@@ -30,22 +31,9 @@ uniform mat4 xyz_to_ras_m4;
 uniform float value_min;
 uniform float value_max;
 
-varying vec3 vray_dir;
 varying vec3 transformed_eye;
-varying vec3 vpos;
-
-vec2 intersect_box(vec3 orig, vec3 dir) {
-	const vec3 box_min = vec3(0);
-	const vec3 box_max = vec3(1);
-	vec3 inv_dir = 1.0 / dir;
-	vec3 tmin_tmp = (box_min - orig) * inv_dir;
-	vec3 tmax_tmp = (box_max - orig) * inv_dir;
-	vec3 tmin = min(tmin_tmp, tmax_tmp);
-	vec3 tmax = max(tmin_tmp, tmax_tmp);
-	float t0 = max(tmin.x, max(tmin.y, tmin.z));
-	float t1 = min(tmax.x, min(tmax.y, tmax.z));
-	return vec2(t0, t1);
-}
+varying vec3 vposition;
+varying mat4 vmodelMatrix;
 
 float halfFloatBitsToIntValue(float inputx){
   int step = 0;
@@ -84,56 +72,52 @@ vec3 applyMatrix4(vec3 v3, mat4 m){
   return (m*vec4(v3,1.0)).xyz;
 }
 
+vec2 intersect_box(vec3 orig, vec3 dir) {
+	const vec3 box_min = vec3(0);
+	const vec3 box_max = vec3(1);
+	vec3 inv_dir = 1.0 / dir;
+	vec3 tmin_tmp = (box_min - orig) * inv_dir;
+	vec3 tmax_tmp = (box_max - orig) * inv_dir;
+	vec3 tmin = min(tmin_tmp, tmax_tmp);
+	vec3 tmax = max(tmin_tmp, tmax_tmp);
+	float t0 = max(tmin.x, max(tmin.y, tmin.z));
+	float t1 = min(tmax.x, min(tmax.y, tmax.z));
+	return vec2(t0, t1);
+}
 
 void main(void) {
+  vec4 color;
+  vec3 pos_RAS = vposition/volume_scale + vec3(0.5);
+  vec3 ray_dir = normalize(vposition - cameraPosition);
 
-  // Step 1: Normalize the view ray
-  vec3 ray_dir = normalize(vray_dir);
-
-  float dt = 200.0;
-
-  vec4 color = vec4(0.0);
-  vec3 pos_RAS = vpos;
-
-	for (int t = 0; t < 1; t++) {
-		// Step 4.1: Sample the volume, and color it by the transfer function.
-		// Note that here we don't use the opacity from the transfer function,
-    // and just use the sample value as the opacity
-    
-    vec3 pos_XYZ = applyMatrix4(pos_RAS, xyz_to_ras_m4);
-
-    float val = halfFloatBitsToIntValue(texture(volume_data, pos_XYZ).r);
-    val = (val-value_min)/(value_max-value_min);
-		vec4 val_color = vec4(val);
-
-		// Step 4.2: Accumulate the color and opacity using the front-to-back
-		// compositing equation
-		// color.rgb += (1.0 - color.a) * val_color.a * val_color.rgb;
-		color.a += val;
-
-		// Optimization: break out of the loop when the color is near opaque
-		if (color.a >= 0.95) {
-			break;
-    }
-    
-		pos_RAS += ray_dir * dt;
+  vec2 t_hit = intersect_box(pos_RAS, ray_dir);
+	if (t_hit.x > t_hit.y) {
+		discard;
   }
-  vec3 pos_XYZ = applyMatrix4(pos_RAS, xyz_to_ras_m4);
-  float val = halfFloatBitsToIntValue(texture(volume_data, pos_RAS).r);
-  val = (val-value_min)/(value_max-value_min);
+  t_hit.x = max(t_hit.x, 0.0);
 
-	gl_FragColor = vec4(vec3(val), 1.0);
+  vec3 p = pos_RAS + t_hit.x * ray_dir;
+
+  float dt = 0.01;
+
+  for (float t = t_hit.x; t < t_hit.y; t += dt) {
+    float val = halfFloatBitsToIntValue(texture(volume_data, applyMatrix4(p,inverse(xyz_to_ras_m4)).r);
+    val = (val-value_min)/(value_max-value_min);
+    color.a += (1.0 - color.a) * val * 0.02;
+		p += ray_dir * dt;
+  }
+  
+	gl_FragColor = vec4(vec3(1.0), color.a);
 }
 `;
 
 const vShader = {
   uniforms: {
     volume_data: { value: new VolumeTexture(new Uint16Array([0]), 1, 1, 1) },
-    volume_scale: { value: new Vector3(256, 256, 125) },
+    volume_scale: { value: new Vector3(240, 240, 170) },
     xyz_to_ras_m4: { value: new Matrix4() },
-    eye_pos: { value: new Vector3(0, 0, 500) },
     value_min: { value: 0.0 },
-    value_max: { value: 500.0 }
+    value_max: { value: 2000.0 }
   },
   vertexShader: vert,
   fragmentShader: frag
