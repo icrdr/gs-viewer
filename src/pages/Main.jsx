@@ -43,9 +43,9 @@ function Slices({ volume, gui }) {
   useEffect(() => {
     //cube helper
     const geometry = new THREE.BoxBufferGeometry(
-      256,
-      256,
-      113
+      240,
+      240,
+      169.5
     );
 
     const uniforms = THREE.UniformsUtils.clone(vShader.uniforms);
@@ -54,6 +54,7 @@ function Slices({ volume, gui }) {
 
     const material = new THREE.ShaderMaterial({
       transparent: true,
+      alphaTest:0.5,
       uniforms: uniforms,
       vertexShader: vShader.vertexShader,
       fragmentShader: vShader.fragmentShader
@@ -96,7 +97,8 @@ function Slices({ volume, gui }) {
     <group ref={grpRef} userData={{ followCamera: true, value_t:0.5}}>
       {cube && <boxHelper args={[cube]} />}
       {cube && <primitive object={cube} />}
-      {/* {slice && <primitive ref={sliceRef} object={slice.mesh} />} */}
+      {slice && <primitive ref={sliceRef} object={slice.mesh} />}
+      <VTKmodel url="./static/models/vtk/liver.vtk" gui={gui} />
       <group
         position={[-volume.offset3.x, -volume.offset3.y, -volume.offset3.z]}
       >

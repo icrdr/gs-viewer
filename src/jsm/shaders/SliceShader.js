@@ -52,7 +52,7 @@ float halfFloatBitsToIntValue(float inputx){
     if (exponent>0.0){
       val = (float(step+15) + inputx -1.0)*1024.0 + float(isneg) * 32768.0;
     }else{
-      val = pow(2.0,exponent-1.0)*inputx*1024.0 + float(isneg) * 32768.0;
+      val = pow(2.0, exponent-1.0)*inputx*1024.0 + float(isneg) * 32768.0;
     }
   }
 

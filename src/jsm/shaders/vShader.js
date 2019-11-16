@@ -4,8 +4,7 @@ import { VolumeTexture } from "../classes/VolumeTexture";
 const vert = `
 uniform vec3 volume_scale;
 
-varying vec3 transformed_eye;
-varying vec3 vposition;
+varying vec3 v_w_pos;
 varying vec3 vnormal;
 varying mat4 vmodelMatrix;
 
@@ -14,16 +13,14 @@ vec3 applyMatrix4(vec3 v3, mat4 m){
 }
 
 void main() {
-  // Translate the cube to center it at the origin.
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); 
 
-  // Compute eye position and ray directions in the unit cube space
-	transformed_eye = cameraPosition / volume_scale;
-  vposition = position;
+  v_w_pos = position;
   vmodelMatrix = modelMatrix;
   vnormal = normal;
 }
 `;
+
 const frag = `
 precision highp int;
 precision highp float;
@@ -36,8 +33,7 @@ uniform float value_min;
 uniform float value_t;
 uniform float value_max;
 
-varying vec3 transformed_eye;
-varying vec3 vposition;
+varying vec3 v_w_pos;
 varying vec3 vnormal;
 varying mat4 vmodelMatrix;
 
@@ -71,7 +67,7 @@ float halfFloatBitsToIntValue(float inputx){
     if (exponent>0.0){
       val = (float(step+15) + inputx -1.0)*1024.0 + float(isneg) * 32768.0;
     }else{
-      val = pow(2.0,exponent-1.0)*inputx*1024.0 + float(isneg) * 32768.0;
+      val = pow(2.0, exponent-1.0)*inputx*1024.0 + float(isneg) * 32768.0;
     }
   }
 
@@ -83,8 +79,8 @@ vec3 applyMatrix4(vec3 v3, mat4 m){
 }
 
 vec2 intersect_box(vec3 orig, vec3 dir) {
-	const vec3 box_min = vec3(0);
-	const vec3 box_max = vec3(1);
+	const vec3 box_min = vec3(-120.0,-120.0,-84.75);
+	const vec3 box_max = vec3(120.0,120.0,84.75);
 	vec3 inv_dir = 1.0 / dir;
 	vec3 tmin_tmp = (box_min - orig) * inv_dir;
 	vec3 tmax_tmp = (box_max - orig) * inv_dir;
@@ -95,54 +91,53 @@ vec2 intersect_box(vec3 orig, vec3 dir) {
 	return vec2(t0, t1);
 }
 
-float sample1(vec3 pos){
-  vec3 vpos = applyMatrix4(pos, xyz_to_ras_m4);
-  float val = halfFloatBitsToIntValue(texture(volume_data, vpos).r);
+float getValue(vec3 pos){
+  vec3 ras_pos = pos + vec3(120.0,120.0,84.75);
+  vec3 xyz_pos = applyMatrix4(ras_pos, inverse(xyz_to_ras_m4));
+  xyz_pos = xyz_pos/volume_scale;
+  float val = halfFloatBitsToIntValue(texture(volume_data, xyz_pos).r);
   return (val-value_min)/(value_max-value_min);
 }
 
 void main(void) {
   vec4 color;
-  vec3 pos_RAS = vposition/volume_scale + vec3(0.5);
-  vec3 ray_dir = normalize(vposition - cameraPosition);
+  vec3 ray_dir = normalize(v_w_pos - cameraPosition);
 
-  vec2 t_hit = intersect_box(pos_RAS, ray_dir);
+  vec2 t_hit = intersect_box(v_w_pos, ray_dir);
 	if (t_hit.x > t_hit.y) {
 		discard;
   }
+
   t_hit.x = max(t_hit.x, 0.0);
 
-  vec3 p = pos_RAS + t_hit.x * ray_dir;
+  vec3 pos = v_w_pos + t_hit.x * ray_dir;
 
-  float dt = 0.005;
+  float dt = 2.0;
   vec3 lightDirection = vec3(1.0,1.0,1.0);
                
   for (float t = t_hit.x; t < t_hit.y; t += dt) {
-    float val = sample1(p);
+    float val = getValue(pos);
     if (val>value_t){
       color.a = 1.0;
-      vec3 step = vec3(0.01,0.01,0.01);
+      vec3 step = vec3(1.5,1.5,1.5);
       vec3 N;
       float val1, val2;
-      val1 = sample1(p + vec3(-step[0], 0.0, 0.0));
-      val2 = sample1(p + vec3(+step[0], 0.0, 0.0));
+      val1 = getValue(pos + vec3(-step[0], 0.0, 0.0));
+      val2 = getValue(pos + vec3(+step[0], 0.0, 0.0));
       N[0] = val1 - val2;
-      val = max(max(val1, val2), val);
-      val1 = sample1(p + vec3(0.0, -step[1], 0.0));
-      val2 = sample1(p + vec3(0.0, +step[1], 0.0));
+      val1 = getValue(pos + vec3(0.0, -step[1], 0.0));
+      val2 = getValue(pos + vec3(0.0, +step[1], 0.0));
       N[1] = val1 - val2;
-      val = max(max(val1, val2), val);
-      val1 = sample1(p + vec3(0.0, 0.0, -step[2]));
-      val2 = sample1(p + vec3(0.0, 0.0, +step[2]));
+      val1 = getValue(pos + vec3(0.0, 0.0, -step[2]));
+      val2 = getValue(pos + vec3(0.0, 0.0, +step[2]));
       N[2] = val1 - val2;
-      val = max(max(val1, val2), val);
-
-      float diffuse = 0.8 * max(0.0, dot(N, lightDirection)) + 0.1;
+      N =normalize(N);
+      float diffuse = 0.5 * max(0.0, dot(N, lightDirection)) + 0.2;
       color.rgb = vec3(diffuse);
       break;
     }
 
-		p += ray_dir * dt;
+		pos += ray_dir * dt;
   }
   
 	gl_FragColor = vec4(color.rgb, color.a);

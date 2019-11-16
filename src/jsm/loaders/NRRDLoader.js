@@ -8,6 +8,7 @@ import {
   FileLoader,
   Matrix4,
   HalfFloatType,
+  MirroredRepeatWrapping,
   RedFormat,
   LinearFilter,
   DataTexture3D,
