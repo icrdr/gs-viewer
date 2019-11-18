@@ -2,11 +2,11 @@ import { Matrix4 } from "three/build/three.module.js";
 import { VolumeTexture } from "../classes/VolumeTexture";
 
 const vert = `
-varying vec2 vUv; 
+varying vec3 w_pos;
   
 void main() {
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); 
-  vUv = uv; 
+  w_pos = (modelMatrix * vec4(position, 1.0)).xyz;
 }
 `;
 const frag = `
@@ -15,12 +15,11 @@ precision highp float;
 precision highp sampler3D;
 
 uniform sampler3D volume_data;
-uniform mat4 data_to_slice_m4;
-uniform float slice_index;
-uniform float slice_width;
-uniform float value_min;
-uniform float value_max;
-varying vec2 vUv;
+uniform mat4 volume_matrix;
+uniform float window_min;
+uniform float window_max;
+
+varying vec3 w_pos;
 
 float halfFloatBitsToIntValue(float inputx){
   int step = 0;
@@ -59,36 +58,39 @@ float halfFloatBitsToIntValue(float inputx){
   return val;
 }
 
-vec4 getV(vec3 pos){
-  if(pos.x >1.0 || pos.x <0.0 || pos.y >1.0 || pos.y <0.0 || pos.z >1.0 || pos.z <0.0){
-    return vec4(vec3(0.0),0.0);
-  }else{
-    float value = halfFloatBitsToIntValue(texture(volume_data, pos).r);
-    float v = (value-value_min)/(value_max-value_min);
-    return vec4(v,v,v,1.0);
-  }
-}
-
 vec3 applyMatrix4(vec3 v3, mat4 m){
   return (m*vec4(v3,1.0)).xyz;
 }
 
+float getVal(vec3 pos){
+  float val;
+  vec3 data_pos = applyMatrix4(pos, inverse(volume_matrix));
+  data_pos = data_pos/vec3(textureSize(volume_data,0))+vec3(0.5);
+  if(data_pos.x>=1.0 || data_pos.x<=0.0 || data_pos.y>=1.0 || data_pos.y<=0.0 || data_pos.z>=1.0 || data_pos.z<=0.0){
+    val = 0.0;
+  }else{
+    float ct_val = halfFloatBitsToIntValue(texture(volume_data, data_pos).r);
+    val = clamp((ct_val-window_min)/(window_max-window_min),0.0,1.0);
+  }
+  return val;
+}
+
 void main() {
-  vec3 pos_Slice = vec3(vUv.x, vUv.y, slice_index/slice_width);
-  vec3 pos_XYZ = applyMatrix4(pos_Slice, data_to_slice_m4);
-  // gl_FragColor = vec4(1.0);
-  gl_FragColor = getV(pos_XYZ.xyz);
+  float val = getVal(w_pos);
+  if(val == 0.0){
+    discard;
+  }
+
+  gl_FragColor = vec4(vec3(val),1.0);
 }
 `;
 
 const SliceShader = {
   uniforms: {
     volume_data: { value: new VolumeTexture(new Uint16Array([0]), 1, 1, 1) },
-    data_to_slice_m4: { value: new Matrix4() },
-    slice_index: { value: 250.0 },
-    slice_width: { value: 500.0 },
-    value_min: { value: 0.0 },
-    value_max: { value: 500.0 }
+    volume_matrix: { value: new Matrix4() },
+    window_min: { value: 0.0 },
+    window_max: { value: 500.0 }
   },
   vertexShader: vert,
   fragmentShader: frag

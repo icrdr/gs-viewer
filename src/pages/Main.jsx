@@ -12,7 +12,7 @@ import { NRRDLoader } from "../jsm/loaders/NRRDLoader";
 import { VTKLoader } from "three/examples/jsm/loaders/VTKLoader";
 
 import { VolumeSlice } from "../jsm/classes/VolumeSlice";
-import { vShader } from "../jsm/shaders/vShader";
+import { VolumeShaderA } from "../jsm/shaders/VolumeShaderA";
 
 // react gui
 import { Switch, Button } from "antd";
@@ -43,25 +43,25 @@ function Slices({ volume, gui }) {
   useEffect(() => {
     //cube helper
     const geometry = new THREE.BoxBufferGeometry(
-      240,
-      240,
-      169.5
+      volume.image.width,
+      volume.image.height,
+      volume.image.depth
     );
 
-    const uniforms = THREE.UniformsUtils.clone(vShader.uniforms);
+    const uniforms = THREE.UniformsUtils.clone(VolumeShaderA.uniforms);
     uniforms["volume_data"].value = volume;
-    uniforms["xyz_to_ras_m4"].value = volume.matrix4;
+    uniforms["volume_matrix"].value = volume.matrix4;
+    uniforms["window_min"].value = volume.min;
+    uniforms["window_max"].value = volume.max;
 
     const material = new THREE.ShaderMaterial({
-      transparent: true,
-      alphaTest:0.5,
       uniforms: uniforms,
-      vertexShader: vShader.vertexShader,
-      fragmentShader: vShader.fragmentShader
+      vertexShader: VolumeShaderA.vertexShader,
+      fragmentShader: VolumeShaderA.fragmentShader
     });
 
     const mesh = new THREE.Mesh(geometry, material);
-    // mesh.applyMatrix(volume.matrix4);
+    mesh.applyMatrix(volume.matrix4);
     setCube(mesh);
 
     const slice = new VolumeSlice(
@@ -75,8 +75,8 @@ function Slices({ volume, gui }) {
     gui.add(slice, "min", volume.min, volume.max, 1).name("min");
     gui.add(slice, "max", volume.min, volume.max, 1).name("max");
 
-    gui.add(grpRef.current.userData, "value_t",0,1,0.02).onChange(e => {
-      mesh.material.uniforms['value_t'].value = e;
+    gui.add(grpRef.current.userData, "level", 0, 1, 0.005).onChange(e => {
+      mesh.material.uniforms["level"].value = e;
     });
 
     gui.add(grpRef.current.userData, "followCamera").onChange(e => {
@@ -94,23 +94,23 @@ function Slices({ volume, gui }) {
   });
 
   return (
-    <group ref={grpRef} userData={{ followCamera: true, value_t:0.5}}>
+    <group ref={grpRef} userData={{ followCamera: true, level: 0.5 }}>
       {cube && <boxHelper args={[cube]} />}
       {cube && <primitive object={cube} />}
       {slice && <primitive ref={sliceRef} object={slice.mesh} />}
-      <VTKmodel url="./static/models/vtk/liver.vtk" gui={gui} />
+      {/* <VTKmodel url="./static/models/vtk/liver.vtk" gui={gui} /> */}
       <group
         position={[-volume.offset3.x, -volume.offset3.y, -volume.offset3.z]}
       >
-        {/* <VTKmodel url="./static/models/vtk/k.vtk" gui={gui} />
+        <VTKmodel url="./static/models/vtk/k.vtk" gui={gui} />
         <VTKmodel url="./static/models/vtk/k_a.vtk" gui={gui} />
-        <VTKmodel url="./static/models/vtk/k_v.vtk" gui={gui} /> */}
+        <VTKmodel url="./static/models/vtk/k_v.vtk" gui={gui} />
       </group>
     </group>
   );
 }
 
-function VTKmodel({ url, offset = [0, 0, 0], gui }) {
+function VTKmodel({ url, gui, ...props }) {
   const [geo, setGeo] = useState();
   const meshRef = useRef();
   useEffect(() => {
@@ -124,12 +124,14 @@ function VTKmodel({ url, offset = [0, 0, 0], gui }) {
     if (meshRef.current) {
       console.log(meshRef.current);
       gui.add(meshRef.current.material, "opacity", 0, 1, 0.01).name("Opacity");
+      gui.add(meshRef.current.material, "transparent").name("transparent");
     }
     // eslint-disable-next-line
   }, [geo]);
 
   return geo ? (
     <mesh
+      {...props}
       ref={meshRef}
       geometry={geo}
       material={
@@ -138,7 +140,6 @@ function VTKmodel({ url, offset = [0, 0, 0], gui }) {
           transparent: true
         })
       }
-      position={offset}
     ></mesh>
   ) : null;
 }
@@ -193,10 +194,11 @@ export default function Main() {
     gl.gammaOutput = true;
     gl.gammaFactor = 2.2;
     gl.physicallyCorrectLights = true;
+    console.log(gl.logarithmicDepthBuffer);
 
     const loader = new NRRDLoader();
     loader.setPath("./static/slices/");
-    loader.load("liver.nrrd", function(volumeTexture) {
+    loader.load("k.nrrd", function(volumeTexture) {
       setVolume(volumeTexture);
     });
   };
@@ -209,7 +211,7 @@ export default function Main() {
           init(gl);
         }}
       >
-        <Camera near={0.01} far={10000} />
+        <Camera near={10} far={100000} />
         <Effect stats={statsRef} />
         {volume && <Slices volume={volume} gui={guiRef} />}
         <directionalLight intensity={3} position={[0, 5, 3]} castShadow />

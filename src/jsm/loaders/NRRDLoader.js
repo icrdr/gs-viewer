@@ -299,7 +299,7 @@ NRRDLoader.prototype = {
 
     volume.type = HalfFloatType;
     volume.format = RedFormat;
-    volume.wrapR = volume.wrapS = volume.wrapT = RepeatWrapping
+    volume.wrapR = volume.wrapS = volume.wrapT = RepeatWrapping;
     volume.minFilter = volume.magFilter = LinearFilter;
     volume.unpackAlignment = 1;
 
