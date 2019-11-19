@@ -13,6 +13,7 @@ import { VTKLoader } from "three/examples/jsm/loaders/VTKLoader";
 
 import { VolumeSlice } from "../jsm/classes/VolumeSlice";
 import { VolumeShaderA } from "../jsm/shaders/VolumeShaderA";
+import { VolumeShaderB } from "../jsm/shaders/VolumeShaderB";
 
 // react gui
 import { Switch, Button } from "antd";
@@ -40,6 +41,18 @@ function Slices({ volume, gui }) {
 
   const { camera, gl } = useThree();
 
+  const updateCtx = (can, cmap) => {
+    const ctx = can.getContext("2d");
+    const gradient = ctx.createLinearGradient(0, 0, 10, 0);
+
+    cmap.forEach(e => {
+      gradient.addColorStop(e.pos, e.color);
+    });
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 10, 1);
+  };
+
   useEffect(() => {
     //cube helper
     const geometry = new THREE.BoxBufferGeometry(
@@ -47,8 +60,17 @@ function Slices({ volume, gui }) {
       volume.image.height,
       volume.image.depth
     );
+    const can = document.createElement("canvas");
+    can.width = 10;
+    can.height = 1;
+    updateCtx(can, grpRef.current.userData.color_map);
+
+    const canvasMap = new THREE.Texture(can);
+    canvasMap.minFilter = THREE.LinearFilter;
+    canvasMap.needsUpdate = true;
 
     const uniforms = THREE.UniformsUtils.clone(VolumeShaderA.uniforms);
+    uniforms["cmap"].value = canvasMap;
     uniforms["volume_data"].value = volume;
     uniforms["volume_matrix"].value = volume.matrix4;
     uniforms["window_min"].value = volume.min;
@@ -72,16 +94,76 @@ function Slices({ volume, gui }) {
     setSlice(slice);
 
     gui.add(slice, "index", 0, slice._sliceWidth, 1).name("Slice Index");
-    gui.add(slice, "min", volume.min, volume.max, 1).name("min");
-    gui.add(slice, "max", volume.min, volume.max, 1).name("max");
+    gui.add(slice, "min", volume.min, volume.max, 1).name("Slice Min");
+    gui.add(slice, "max", volume.min, volume.max, 1).name("Slice Max");
 
-    gui.add(grpRef.current.userData, "level", 0, 1, 0.005).onChange(e => {
-      mesh.material.uniforms["level"].value = e;
-    });
+    gui
+      .add(grpRef.current.userData, "volume_min", volume.min, volume.max, 1)
+      .name("Volume Min")
+      .onChange(e => {
+        mesh.material.uniforms["window_min"].value = e;
+      });
+    gui
+      .add(grpRef.current.userData, "volume_max", volume.min, volume.max, 1)
+      .name("Volume Max")
+      .onChange(e => {
+        mesh.material.uniforms["window_max"].value = e;
+      });
+
+    gui
+      .add(grpRef.current.userData, "surface_level", 0, 1, 0.005)
+      .name("Surface Level")
+      .onChange(e => {
+        mesh.material.uniforms["level"].value = e;
+      });
 
     gui.add(grpRef.current.userData, "followCamera").onChange(e => {
       grpRef.current.userData.followCamera = e;
     });
+    
+    grpRef.current.userData.color_map.forEach((e, i) => {
+      gui.addColor(e, "color").onChange(v => {
+        const cmap = grpRef.current.userData.color_map;
+        cmap[i].color = v;
+        updateCtx(can, cmap);
+        mesh.material.uniforms["cmap"].value.needsUpdate = true;
+      });
+      gui.add(e, "pos", 0, 1, 0.01).onChange(v => {
+        const cmap = grpRef.current.userData.color_map;
+        cmap[i].pos = v;
+        updateCtx(can, cmap);
+        mesh.material.uniforms["cmap"].value.needsUpdate = true;
+      });
+    });
+
+    const addColor = () => {
+      grpRef.current.userData.color_map.push({
+        color: "#ffae23",
+        pos: 0.0
+      });
+
+      const index = grpRef.current.userData.color_map.length;
+      gui
+        .addColor(grpRef.current.userData.color_map[index - 1], "color")
+        .onChange(v => {
+          const cmap = grpRef.current.userData.color_map;
+          cmap[index - 1].color = v;
+          updateCtx(can, cmap);
+          mesh.material.uniforms["cmap"].value.needsUpdate = true;
+        });
+      gui
+        .add(grpRef.current.userData.color_map[index - 1], "pos", 0, 1, 0.01)
+        .onChange(v => {
+          const cmap = grpRef.current.userData.color_map;
+          cmap[index - 1].pos = v;
+          updateCtx(can, cmap);
+          mesh.material.uniforms["cmap"].value.needsUpdate = true;
+        });
+    };
+
+    grpRef.current.userData['explode'] = addColor
+    gui.add(grpRef.current.userData, "explode");
+
     // eslint-disable-next-line
   }, []);
 
@@ -94,18 +176,32 @@ function Slices({ volume, gui }) {
   });
 
   return (
-    <group ref={grpRef} userData={{ followCamera: true, level: 0.5 }}>
+    <group
+      ref={grpRef}
+      userData={{
+        followCamera: true,
+        surface_level: 0.5,
+        volume_min: volume.min,
+        volume_max: volume.max,
+        color_map: [
+          { color: "#000", pos: 0 },
+          { color: "#fff", pos: 1 }
+        ]
+      }}
+    >
       {cube && <boxHelper args={[cube]} />}
-      {cube && <primitive object={cube} />}
-      {slice && <primitive ref={sliceRef} object={slice.mesh} />}
+      {cube && <primitive object={cube} renderOrder={1} />}
+      {slice && (
+        <primitive ref={sliceRef} object={slice.mesh} renderOrder={0} />
+      )}
       {/* <VTKmodel url="./static/models/vtk/liver.vtk" gui={gui} /> */}
-      <group
+      {/* <group
         position={[-volume.offset3.x, -volume.offset3.y, -volume.offset3.z]}
       >
         <VTKmodel url="./static/models/vtk/k.vtk" gui={gui} />
         <VTKmodel url="./static/models/vtk/k_a.vtk" gui={gui} />
         <VTKmodel url="./static/models/vtk/k_v.vtk" gui={gui} />
-      </group>
+      </group> */}
     </group>
   );
 }
@@ -194,7 +290,6 @@ export default function Main() {
     gl.gammaOutput = true;
     gl.gammaFactor = 2.2;
     gl.physicallyCorrectLights = true;
-    console.log(gl.logarithmicDepthBuffer);
 
     const loader = new NRRDLoader();
     loader.setPath("./static/slices/");

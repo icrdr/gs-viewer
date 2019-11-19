@@ -1,14 +1,16 @@
-import { Matrix4, Vector3 } from "three/build/three.module.js";
+import { Matrix4, Vector3, Texture } from "three/build/three.module.js";
 import { VolumeTexture } from "../classes/VolumeTexture";
 
 const vert = `
 varying vec3 w_pos;
 varying mat4 vprojectionViewMatrix;
+varying vec2 vUv;
 
 void main() {
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); 
   w_pos = (modelMatrix * vec4(position, 1.0)).xyz;
   vprojectionViewMatrix = projectionMatrix * viewMatrix;
+  vUv = uv;
 }
 `;
 
@@ -16,7 +18,9 @@ const frag = `
 precision highp int;
 precision highp float;
 precision highp sampler3D;
+precision highp sampler2D;
 
+uniform sampler2D cmap;
 uniform sampler3D volume_data;
 uniform mat4 volume_matrix;
 uniform float window_min;
@@ -27,6 +31,7 @@ uniform vec3 box_max;
 
 varying vec3 w_pos;
 varying mat4 vprojectionViewMatrix;
+varying vec2 vUv;
 
 float halfFloatBitsToIntValue(float inputx){
   int step = 0;
@@ -80,7 +85,7 @@ vec2 intersect_box(vec3 orig, vec3 dir) {
 	return vec2(t0, t1);
 }
 
-float getVal(vec3 pos){
+float getSample(vec3 pos){
   float val;
   vec3 data_pos = applyMatrix4(pos, inverse(volume_matrix));
   data_pos = data_pos/vec3(textureSize(volume_data,0))+vec3(0.5);
@@ -88,13 +93,13 @@ float getVal(vec3 pos){
     val = 0.0;
   }else{
     float ct_val = halfFloatBitsToIntValue(texture(volume_data, data_pos).r);
-    val = (ct_val-window_min)/(window_max-window_min);
+    val = clamp((ct_val-window_min)/(window_max-window_min),0.0,1.0);
   }
   return val;
 }
 
 void main(void) {
-  vec4 color;
+  vec4 col;
   
   vec3 ray_dir = normalize(w_pos - cameraPosition);
 
@@ -105,36 +110,37 @@ void main(void) {
 
   t_hit.x = max(t_hit.x, 0.0);
 
-  vec3 pos = w_pos + t_hit.x * ray_dir;
+  float random = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898,78.233))+0.1) * 43758.5453);
+  vec3 pos = w_pos + t_hit.x * ray_dir * random;
 
-  float dt = 2.0;
+  float dt = 1.0;
   vec3 lightDirection = vec3(1.0,1.0,1.0);
   
   for (float t = t_hit.x; t < t_hit.y; t += dt) {
-    float val = getVal(pos);
+    float val = getSample(pos);
     if (val>level){
-      color.a = 1.0;
+      col.a = 1.0;
       vec3 step = vec3(1.5,1.5,1.5);
       vec3 normal;
       float val1, val2;
-      val1 = getVal(pos + vec3(-step[0], 0.0, 0.0));
-      val2 = getVal(pos + vec3(+step[0], 0.0, 0.0));
+      val1 = getSample(pos + vec3(-step[0], 0.0, 0.0));
+      val2 = getSample(pos + vec3(+step[0], 0.0, 0.0));
       normal[0] = val1 - val2;
-      val1 = getVal(pos + vec3(0.0, -step[1], 0.0));
-      val2 = getVal(pos + vec3(0.0, +step[1], 0.0));
+      val1 = getSample(pos + vec3(0.0, -step[1], 0.0));
+      val2 = getSample(pos + vec3(0.0, +step[1], 0.0));
       normal[1] = val1 - val2;
-      val1 = getVal(pos + vec3(0.0, 0.0, -step[2]));
-      val2 = getVal(pos + vec3(0.0, 0.0, +step[2]));
+      val1 = getSample(pos + vec3(0.0, 0.0, -step[2]));
+      val2 = getSample(pos + vec3(0.0, 0.0, +step[2]));
       normal[2] = val1 - val2;
       normal =normalize(normal);
       float diffuse = 0.5 * max(0.0, dot(normal, lightDirection)) + 0.2;
-      color.rgb = vec3(diffuse);
+      col.rgb = texture(cmap, vec2(val,0.5)).rgb * diffuse;
       break;
     }
     pos += ray_dir * dt;
   }
   
-  if(color.a == 0.0){
+  if(col.a == 0.0){
     discard;
   }
   
@@ -144,12 +150,14 @@ void main(void) {
   vec4 clip_space_pos  = vprojectionViewMatrix * vec4(pos, 1.0);
   float ndc_depth = clip_space_pos.z / clip_space_pos.w;
   gl_FragDepth = (((far-near) * ndc_depth) + near + far) / 2.0;
-  gl_FragColor = vec4(color.rgb, 1.0);
+  gl_FragColor = vec4(col.rgb, 1.0);
+  // gl_FragColor = vec4(texture(cmap, vUv).rgb, 1.0);
 }
 `;
 
 const VolumeShaderA = {
   uniforms: {
+    cmap: { value: new Texture() },
     volume_data: { value: new VolumeTexture(new Uint16Array([0]), 1, 1, 1) },
     volume_matrix: { value: new Matrix4() },
     level: { value: 0.5 },
