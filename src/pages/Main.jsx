@@ -120,7 +120,7 @@ function Slices({ volume, gui }) {
     gui.add(grpRef.current.userData, "followCamera").onChange(e => {
       grpRef.current.userData.followCamera = e;
     });
-    
+
     grpRef.current.userData.color_map.forEach((e, i) => {
       gui.addColor(e, "color").onChange(v => {
         const cmap = grpRef.current.userData.color_map;
@@ -161,7 +161,7 @@ function Slices({ volume, gui }) {
         });
     };
 
-    grpRef.current.userData['explode'] = addColor
+    grpRef.current.userData["explode"] = addColor;
     gui.add(grpRef.current.userData, "explode");
 
     // eslint-disable-next-line
