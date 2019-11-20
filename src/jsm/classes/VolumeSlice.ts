@@ -7,11 +7,21 @@ import {
   UniformsUtils,
   PlaneBufferGeometry,
   Vector3
-} from "three/build/three.module.js";
+} from "three";
 import { SliceShader } from "../shaders/SliceShader";
+import { VolumeTexture } from "./VolumeTexture";
 
 class VolumeSlice {
-  constructor(volume, index, axis) {
+  volume: VolumeTexture;
+  _index: number;
+  _min: number;
+  _max: number;
+  _axis: Vector3;
+  _sliceWidth: number;
+  mesh: Mesh;
+  material: ShaderMaterial;
+
+  constructor(volume: VolumeTexture, index: number, axis: Vector3) {
     this.volume = volume;
     this._index = index;
     this._axis = axis;
@@ -23,14 +33,14 @@ class VolumeSlice {
       volume.image.depth
     ).length();
 
-    const sliceMeshMatrix= this.computeMatrix(index, axis);
+    const sliceMeshMatrix = this.computeMatrix(index, axis);
     const uniforms = UniformsUtils.clone(SliceShader.uniforms);
     uniforms["volume_data"].value = volume;
     uniforms["volume_matrix"].value = this.volume.matrix4;
     uniforms["window_min"].value = volume.min;
     uniforms["window_max"].value = volume.max;
 
-    const material = new ShaderMaterial({
+    this.material = new ShaderMaterial({
       side: DoubleSide,
       uniforms: uniforms,
       vertexShader: SliceShader.vertexShader,
@@ -42,12 +52,12 @@ class VolumeSlice {
       this._sliceWidth
     );
 
-    this.mesh = new Mesh(geometry, material);
+    this.mesh = new Mesh(geometry, this.material);
     this.mesh.matrixAutoUpdate = false;
     this.mesh.matrix.copy(sliceMeshMatrix);
   }
 
-  computeMatrix(index, axis) {
+  computeMatrix(index: number, axis: Vector3): Matrix4 {
     const quaternion = new Quaternion();
     quaternion.setFromUnitVectors(new Vector3(0, 0, 1), axis);
 
@@ -77,7 +87,7 @@ class VolumeSlice {
 
   set min(value) {
     this._min = value;
-    this.mesh.material.uniforms["window_min"].value = value;
+    this.material.uniforms["window_min"].value = value;
   }
 
   get max() {
@@ -86,7 +96,7 @@ class VolumeSlice {
 
   set max(value) {
     this._max = value;
-    this.mesh.material.uniforms["window_max"].value = value;
+    this.material.uniforms["window_max"].value = value;
   }
 
   get axis() {

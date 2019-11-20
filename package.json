@@ -15,7 +15,9 @@
     "react-scripts": "3.1.2",
     "react-spring": "^8.0.27",
     "react-three-fiber": "^3.0.13",
-    "three": "^0.110.0"
+    "stats.js": "^0.17.0",
+    "three": "^0.110.0",
+    "zlibt": "^0.0.5"
   },
   "scripts": {
     "start": "react-app-rewired start",
@@ -39,6 +41,13 @@
     ]
   },
   "devDependencies": {
-    "shed-css": "^1.4.0"
+    "@types/dat.gui": "^0.7.5",
+    "@types/node": "^12.12.11",
+    "@types/react": "^16.9.11",
+    "@types/react-dom": "^16.9.4",
+    "@types/react-router-dom": "^5.1.2",
+    "@types/stats": "^0.16.30",
+    "shed-css": "^1.4.0",
+    "typescript": "^3.7.2"
   }
 }

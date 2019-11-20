@@ -1,10 +1,10 @@
 /* eslint-disable no-unused-vars */
 import React, { useRef, useState, useEffect } from "react";
 import { Canvas, useFrame, extend, useThree } from "react-three-fiber";
-import { useSpring, a } from "react-spring/three";
+// import { useSpring, a } from "react-spring/three";
 import * as THREE from "three";
 import * as dat from "dat.gui";
-import Stats from "three/examples/jsm/libs/stats.module";
+import Stats from "stats.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 
 // loader
@@ -17,31 +17,52 @@ import { VolumeShaderB } from "../jsm/shaders/VolumeShaderB";
 
 // react gui
 import { Switch, Button } from "antd";
+import { VolumeTexture } from "../jsm/classes/VolumeTexture";
 
 extend({ OrbitControls });
 
-function promisifyLoader(loader, url, onProgress) {
-  return new Promise((resolve, reject) => {
-    loader.load(url, resolve, onProgress, reject);
-  });
+// function promisifyLoader(loader, url, onProgress) {
+//   return new Promise((resolve, reject) => {
+//     loader.load(url, resolve, onProgress, reject);
+//   });
+// }
+interface EffectProps {
+  stats: Stats;
 }
 
-function Effect({ stats }) {
+interface SlicesProps {
+  volume: VolumeTexture;
+  gui: dat.GUI;
+}
+
+interface VTKmodelProps {
+  url: string;
+  gui: dat.GUI;
+  props: object;
+}
+
+
+interface cmapColor {
+  color: string;
+  pos: number;
+}
+
+const Effect: React.FC<EffectProps> = ({ stats }) => {
   useFrame(() => {
     stats.update();
   });
   return null;
-}
+};
 
-function Slices({ volume, gui }) {
+const Slices: React.FC<SlicesProps> = ({ volume, gui }) => {
   const [slice, setSlice] = useState();
   const [cube, setCube] = useState();
-  const sliceRef = useRef();
-  const grpRef = useRef();
+  const sliceRef: any = useRef();
+  const grpRef: any = useRef();
 
   const { camera, gl } = useThree();
-
-  const updateCtx = (can, cmap) => {
+  
+  const updateCtx = (can: any, cmap: Array<cmapColor>) => {
     const ctx = can.getContext("2d");
     const gradient = ctx.createLinearGradient(0, 0, 10, 0);
 
@@ -101,38 +122,38 @@ function Slices({ volume, gui }) {
       .add(grpRef.current.userData, "volume_min", volume.min, volume.max, 1)
       .name("Volume Min")
       .onChange(e => {
-        mesh.material.uniforms["window_min"].value = e;
+        material.uniforms["window_min"].value = e;
       });
     gui
       .add(grpRef.current.userData, "volume_max", volume.min, volume.max, 1)
       .name("Volume Max")
       .onChange(e => {
-        mesh.material.uniforms["window_max"].value = e;
+        material.uniforms["window_max"].value = e;
       });
 
     gui
       .add(grpRef.current.userData, "surface_level", 0, 1, 0.005)
       .name("Surface Level")
       .onChange(e => {
-        mesh.material.uniforms["level"].value = e;
+        material.uniforms["level"].value = e;
       });
 
     gui.add(grpRef.current.userData, "followCamera").onChange(e => {
       grpRef.current.userData.followCamera = e;
     });
 
-    grpRef.current.userData.color_map.forEach((e, i) => {
+    grpRef.current.userData.color_map.forEach((e:object, i:number) => {
       gui.addColor(e, "color").onChange(v => {
         const cmap = grpRef.current.userData.color_map;
         cmap[i].color = v;
         updateCtx(can, cmap);
-        mesh.material.uniforms["cmap"].value.needsUpdate = true;
+        material.uniforms["cmap"].value.needsUpdate = true;
       });
       gui.add(e, "pos", 0, 1, 0.01).onChange(v => {
         const cmap = grpRef.current.userData.color_map;
         cmap[i].pos = v;
         updateCtx(can, cmap);
-        mesh.material.uniforms["cmap"].value.needsUpdate = true;
+        material.uniforms["cmap"].value.needsUpdate = true;
       });
     });
 
@@ -149,7 +170,7 @@ function Slices({ volume, gui }) {
           const cmap = grpRef.current.userData.color_map;
           cmap[index - 1].color = v;
           updateCtx(can, cmap);
-          mesh.material.uniforms["cmap"].value.needsUpdate = true;
+          material.uniforms["cmap"].value.needsUpdate = true;
         });
       gui
         .add(grpRef.current.userData.color_map[index - 1], "pos", 0, 1, 0.01)
@@ -157,7 +178,7 @@ function Slices({ volume, gui }) {
           const cmap = grpRef.current.userData.color_map;
           cmap[index - 1].pos = v;
           updateCtx(can, cmap);
-          mesh.material.uniforms["cmap"].value.needsUpdate = true;
+          material.uniforms["cmap"].value.needsUpdate = true;
         });
     };
 
@@ -204,11 +225,11 @@ function Slices({ volume, gui }) {
       </group> */}
     </group>
   );
-}
+};
 
-function VTKmodel({ url, gui, ...props }) {
+const VTKmodel: React.FC<VTKmodelProps> = ({ url, gui, ...props }) => {
   const [geo, setGeo] = useState();
-  const meshRef = useRef();
+  const meshRef: any = useRef();
   useEffect(() => {
     new VTKLoader().load(url, geo => {
       setGeo(geo);
@@ -238,10 +259,10 @@ function VTKmodel({ url, gui, ...props }) {
       }
     ></mesh>
   ) : null;
-}
+};
 
 function Control() {
-  const ctlRef = useRef();
+  const ctlRef: any = useRef();
   const { camera, gl } = useThree();
   useFrame(() => {
     ctlRef.current.update();
@@ -252,8 +273,8 @@ function Control() {
   );
 }
 
-function Camera(props) {
-  const camRef = useRef();
+const Camera:React.FC<any>=(props)=>{
+  const camRef: any = useRef();
   const { setDefaultCamera } = useThree();
 
   useEffect(() => {
@@ -278,8 +299,8 @@ export default function Main() {
 
   console.log("rerender");
 
-  const init = gl => {
-    const stats = new Stats();
+  const init = (gl:any) => {
+    const stats:any = new Stats();
     setStatsRef(stats);
     gl.domElement.parentElement.appendChild(stats.domElement);
     stats.domElement.style.position = "absolute";
@@ -293,7 +314,7 @@ export default function Main() {
 
     const loader = new NRRDLoader();
     loader.setPath("./static/slices/");
-    loader.load("k.nrrd", function(volumeTexture) {
+    loader.load("k.nrrd", function(volumeTexture: VolumeTexture) {
       setVolume(volumeTexture);
     });
   };
@@ -312,8 +333,8 @@ export default function Main() {
         <directionalLight intensity={3} position={[0, 5, 3]} castShadow />
         <hemisphereLight
           intensity={1}
-          skyColor={0xffffbb}
-          groundColor={0x080820}
+          skyColor={new THREE.Color(0xffffbb)}
+          groundColor={new THREE.Color(0x080820)}
         />
         <axesHelper args={[50]} position={[0, 0, 0]} />
       </Canvas>

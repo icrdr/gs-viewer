@@ -14,7 +14,7 @@ import {
   DataTexture3D,
   RepeatWrapping,
   Vector3
-} from "three/build/three.module.js";
+} from "three";
 import { Zlib } from "three/examples/jsm/libs/gunzip.module.min.js";
 import { VolumeTexture } from "../classes/VolumeTexture";
 

@@ -1,4 +1,4 @@
-import { Matrix4, Vector3, Texture } from "three/build/three.module.js";
+import { Matrix4, Vector3, Texture } from "three";
 import { VolumeTexture } from "../classes/VolumeTexture";
 
 const vert = `
