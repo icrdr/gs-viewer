@@ -26,25 +26,9 @@ extend({ OrbitControls });
 //     loader.load(url, resolve, onProgress, reject);
 //   });
 // }
+
 interface EffectProps {
   stats: Stats;
-}
-
-interface SlicesProps {
-  volume: VolumeTexture;
-  gui: dat.GUI;
-}
-
-interface VTKmodelProps {
-  url: string;
-  gui: dat.GUI;
-  props: object;
-}
-
-
-interface cmapColor {
-  color: string;
-  pos: number;
 }
 
 const Effect: React.FC<EffectProps> = ({ stats }) => {
@@ -54,16 +38,26 @@ const Effect: React.FC<EffectProps> = ({ stats }) => {
   return null;
 };
 
+interface SlicesProps {
+  volume: VolumeTexture;
+  gui: dat.GUI;
+}
+
 const Slices: React.FC<SlicesProps> = ({ volume, gui }) => {
+  interface cmapColor {
+    color: string;
+    pos: number;
+  }
+
   const [slice, setSlice] = useState();
   const [cube, setCube] = useState();
-  const sliceRef: any = useRef();
-  const grpRef: any = useRef();
+  const sliceRef = useRef<THREE.Object3D>(null);
+  const grpRef = useRef<THREE.Group>(null);
 
   const { camera, gl } = useThree();
-  
-  const updateCtx = (can: any, cmap: Array<cmapColor>) => {
-    const ctx = can.getContext("2d");
+
+  const updateCtx = (can: HTMLCanvasElement, cmap: Array<cmapColor>) => {
+    const ctx = can.getContext("2d")!;
     const gradient = ctx.createLinearGradient(0, 0, 10, 0);
 
     cmap.forEach(e => {
@@ -75,124 +69,126 @@ const Slices: React.FC<SlicesProps> = ({ volume, gui }) => {
   };
 
   useEffect(() => {
-    //cube helper
-    const geometry = new THREE.BoxBufferGeometry(
-      volume.image.width,
-      volume.image.height,
-      volume.image.depth
-    );
-    const can = document.createElement("canvas");
-    can.width = 10;
-    can.height = 1;
-    updateCtx(can, grpRef.current.userData.color_map);
+      const group = grpRef.current!;
+      //cube helper
+      const geometry = new THREE.BoxBufferGeometry(
+        volume.image.width,
+        volume.image.height,
+        volume.image.depth
+      );
+      const can = document.createElement("canvas");
+      can.width = 10;
+      can.height = 1;
+      updateCtx(can, group.userData.color_map);
 
-    const canvasMap = new THREE.Texture(can);
-    canvasMap.minFilter = THREE.LinearFilter;
-    canvasMap.needsUpdate = true;
+      const canvasMap = new THREE.Texture(can);
+      canvasMap.minFilter = THREE.LinearFilter;
+      canvasMap.needsUpdate = true;
 
-    const uniforms = THREE.UniformsUtils.clone(VolumeShaderA.uniforms);
-    uniforms["cmap"].value = canvasMap;
-    uniforms["volume_data"].value = volume;
-    uniforms["volume_matrix"].value = volume.matrix4;
-    uniforms["window_min"].value = volume.min;
-    uniforms["window_max"].value = volume.max;
+      const uniforms = THREE.UniformsUtils.clone(VolumeShaderA.uniforms);
+      uniforms["cmap"].value = canvasMap;
+      uniforms["volume_data"].value = volume;
+      uniforms["volume_matrix"].value = volume.matrix4;
+      uniforms["window_min"].value = volume.min;
+      uniforms["window_max"].value = volume.max;
 
-    const material = new THREE.ShaderMaterial({
-      uniforms: uniforms,
-      vertexShader: VolumeShaderA.vertexShader,
-      fragmentShader: VolumeShaderA.fragmentShader
-    });
-
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.applyMatrix(volume.matrix4);
-    setCube(mesh);
-
-    const slice = new VolumeSlice(
-      volume,
-      0,
-      new THREE.Vector3(1, 1, 1).normalize()
-    );
-    setSlice(slice);
-
-    gui.add(slice, "index", 0, slice._sliceWidth, 1).name("Slice Index");
-    gui.add(slice, "min", volume.min, volume.max, 1).name("Slice Min");
-    gui.add(slice, "max", volume.min, volume.max, 1).name("Slice Max");
-
-    gui
-      .add(grpRef.current.userData, "volume_min", volume.min, volume.max, 1)
-      .name("Volume Min")
-      .onChange(e => {
-        material.uniforms["window_min"].value = e;
-      });
-    gui
-      .add(grpRef.current.userData, "volume_max", volume.min, volume.max, 1)
-      .name("Volume Max")
-      .onChange(e => {
-        material.uniforms["window_max"].value = e;
+      const material = new THREE.ShaderMaterial({
+        uniforms: uniforms,
+        vertexShader: VolumeShaderA.vertexShader,
+        fragmentShader: VolumeShaderA.fragmentShader
       });
 
-    gui
-      .add(grpRef.current.userData, "surface_level", 0, 1, 0.005)
-      .name("Surface Level")
-      .onChange(e => {
-        material.uniforms["level"].value = e;
-      });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.applyMatrix(volume.matrix4);
+      setCube(mesh);
 
-    gui.add(grpRef.current.userData, "followCamera").onChange(e => {
-      grpRef.current.userData.followCamera = e;
-    });
+      const slice = new VolumeSlice(
+        volume,
+        0,
+        new THREE.Vector3(1, 1, 1).normalize()
+      );
+      setSlice(slice);
 
-    grpRef.current.userData.color_map.forEach((e:object, i:number) => {
-      gui.addColor(e, "color").onChange(v => {
-        const cmap = grpRef.current.userData.color_map;
-        cmap[i].color = v;
-        updateCtx(can, cmap);
-        material.uniforms["cmap"].value.needsUpdate = true;
-      });
-      gui.add(e, "pos", 0, 1, 0.01).onChange(v => {
-        const cmap = grpRef.current.userData.color_map;
-        cmap[i].pos = v;
-        updateCtx(can, cmap);
-        material.uniforms["cmap"].value.needsUpdate = true;
-      });
-    });
+      gui.add(slice, "index", 0, slice._sliceWidth, 1).name("Slice Index");
+      gui.add(slice, "min", volume.min, volume.max, 1).name("Slice Min");
+      gui.add(slice, "max", volume.min, volume.max, 1).name("Slice Max");
 
-    const addColor = () => {
-      grpRef.current.userData.color_map.push({
-        color: "#ffae23",
-        pos: 0.0
-      });
-
-      const index = grpRef.current.userData.color_map.length;
       gui
-        .addColor(grpRef.current.userData.color_map[index - 1], "color")
-        .onChange(v => {
-          const cmap = grpRef.current.userData.color_map;
-          cmap[index - 1].color = v;
+        .add(group.userData, "volume_min", volume.min, volume.max, 1)
+        .name("Volume Min")
+        .onChange(e => {
+          material.uniforms["window_min"].value = e;
+        });
+      gui
+        .add(group.userData, "volume_max", volume.min, volume.max, 1)
+        .name("Volume Max")
+        .onChange(e => {
+          material.uniforms["window_max"].value = e;
+        });
+
+      gui
+        .add(group.userData, "surface_level", 0, 1, 0.005)
+        .name("Surface Level")
+        .onChange(e => {
+          material.uniforms["level"].value = e;
+        });
+
+      gui.add(group.userData, "followCamera").onChange(e => {
+        group.userData.followCamera = e;
+      });
+
+      group.userData.color_map.forEach((e: object, i: number) => {
+        gui.addColor(e, "color").onChange(v => {
+          const cmap = group.userData.color_map;
+          cmap[i].color = v;
           updateCtx(can, cmap);
           material.uniforms["cmap"].value.needsUpdate = true;
         });
-      gui
-        .add(grpRef.current.userData.color_map[index - 1], "pos", 0, 1, 0.01)
-        .onChange(v => {
-          const cmap = grpRef.current.userData.color_map;
-          cmap[index - 1].pos = v;
+        gui.add(e, "pos", 0, 1, 0.01).onChange(v => {
+          const cmap = group.userData.color_map;
+          cmap[i].pos = v;
           updateCtx(can, cmap);
           material.uniforms["cmap"].value.needsUpdate = true;
         });
-    };
+      });
 
-    grpRef.current.userData["explode"] = addColor;
-    gui.add(grpRef.current.userData, "explode");
+      const addColor = () => {
+        group.userData.color_map.push({
+          color: "#ffae23",
+          pos: 0.0
+        });
 
+        const index = group.userData.color_map.length;
+        gui
+          .addColor(group.userData.color_map[index - 1], "color")
+          .onChange(v => {
+            const cmap = group.userData.color_map;
+            cmap[index - 1].color = v;
+            updateCtx(can, cmap);
+            material.uniforms["cmap"].value.needsUpdate = true;
+          });
+        gui
+          .add(group.userData.color_map[index - 1], "pos", 0, 1, 0.01)
+          .onChange(v => {
+            const cmap = group.userData.color_map;
+            cmap[index - 1].pos = v;
+            updateCtx(can, cmap);
+            material.uniforms["cmap"].value.needsUpdate = true;
+          });
+      };
+
+      group.userData["explode"] = addColor;
+      gui.add(group.userData, "explode");
     // eslint-disable-next-line
   }, []);
 
   useFrame(() => {
-    var vector = new THREE.Vector3(0, 0, 1);
-    if (grpRef.current.userData.followCamera) {
-      vector.applyQuaternion(camera.quaternion);
-      slice.axis = vector;
+    if (grpRef.current) {
+      var vector = new THREE.Vector3(0, 0, 1);
+      if (grpRef.current.userData.followCamera) {
+        vector.applyQuaternion(camera.quaternion);
+        slice.axis = vector;
+      }
     }
   });
 
@@ -227,9 +223,15 @@ const Slices: React.FC<SlicesProps> = ({ volume, gui }) => {
   );
 };
 
+interface VTKmodelProps {
+  url: string;
+  gui: dat.GUI;
+  props: object;
+}
+
 const VTKmodel: React.FC<VTKmodelProps> = ({ url, gui, ...props }) => {
   const [geo, setGeo] = useState();
-  const meshRef: any = useRef();
+  const meshRef = useRef<THREE.Mesh>(null);
   useEffect(() => {
     new VTKLoader().load(url, geo => {
       setGeo(geo);
@@ -262,10 +264,11 @@ const VTKmodel: React.FC<VTKmodelProps> = ({ url, gui, ...props }) => {
 };
 
 function Control() {
-  const ctlRef: any = useRef();
+  const ctlRef = useRef<OrbitControls>(null);
   const { camera, gl } = useThree();
   useFrame(() => {
-    ctlRef.current.update();
+    const ctrl = ctlRef.current!
+    ctrl.update();
   });
 
   return (
@@ -273,13 +276,19 @@ function Control() {
   );
 }
 
-const Camera:React.FC<any>=(props)=>{
-  const camRef: any = useRef();
+interface cameraProps {
+  far?:number;
+  near?:number
+}
+
+const Camera: React.FC<cameraProps> = props => {
+  const camRef = useRef<THREE.PerspectiveCamera>(null);
   const { setDefaultCamera } = useThree();
 
   useEffect(() => {
-    setDefaultCamera(camRef.current);
-    camRef.current.position.set(0, 0, 1000);
+    const camera = camRef.current!;
+    setDefaultCamera(camera);
+    camera.position.set(0, 0, 1000);
     // eslint-disable-next-line
   }, []);
 
@@ -289,7 +298,7 @@ const Camera:React.FC<any>=(props)=>{
       {camRef && <Control />}
     </>
   );
-}
+};
 
 export default function Main() {
   const [volume, setVolume] = useState();
@@ -299,11 +308,11 @@ export default function Main() {
 
   console.log("rerender");
 
-  const init = (gl:any) => {
-    const stats:any = new Stats();
+  const init = (gl: THREE.WebGLRenderer) => {
+    const stats = new Stats();
     setStatsRef(stats);
-    gl.domElement.parentElement.appendChild(stats.domElement);
-    stats.domElement.style.position = "absolute";
+    gl.domElement.appendChild(stats.dom);
+    stats.dom.style.position = "absolute";
 
     const gui = new dat.GUI();
     setGuiRef(gui);
