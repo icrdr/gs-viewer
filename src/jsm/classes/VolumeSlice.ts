@@ -13,13 +13,13 @@ import { VolumeTexture } from "./VolumeTexture";
 
 class VolumeSlice {
   volume: VolumeTexture;
-  _index: number;
-  _min: number;
-  _max: number;
-  _axis: Vector3;
-  _sliceWidth: number;
+  sliceWidth: number;
   mesh: Mesh;
-  material: ShaderMaterial;
+  protected _index: number;
+  protected _min: number;
+  protected _max: number;
+  protected _axis: Vector3;
+  protected _material: ShaderMaterial;
 
   constructor(volume: VolumeTexture, index: number, axis: Vector3) {
     this.volume = volume;
@@ -27,7 +27,7 @@ class VolumeSlice {
     this._axis = axis;
     this._min = volume.min;
     this._max = volume.max;
-    this._sliceWidth = new Vector3(
+    this.sliceWidth = new Vector3(
       volume.image.width,
       volume.image.height,
       volume.image.depth
@@ -40,31 +40,28 @@ class VolumeSlice {
     uniforms["window_min"].value = volume.min;
     uniforms["window_max"].value = volume.max;
 
-    this.material = new ShaderMaterial({
+    this._material = new ShaderMaterial({
       side: DoubleSide,
       uniforms: uniforms,
       vertexShader: SliceShader.vertexShader,
       fragmentShader: SliceShader.fragmentShader
     });
 
-    const geometry = new PlaneBufferGeometry(
-      this._sliceWidth,
-      this._sliceWidth
-    );
+    const geometry = new PlaneBufferGeometry(this.sliceWidth, this.sliceWidth);
 
-    this.mesh = new Mesh(geometry, this.material);
+    this.mesh = new Mesh(geometry, this._material);
     this.mesh.matrixAutoUpdate = false;
     this.mesh.matrix.copy(sliceMeshMatrix);
   }
 
-  computeMatrix(index: number, axis: Vector3): Matrix4 {
+  computeMatrix(index: number, axis: Vector3) {
     const quaternion = new Quaternion();
     quaternion.setFromUnitVectors(new Vector3(0, 0, 1), axis);
 
     const sliceMeshMatrix = new Matrix4()
       .multiply(new Matrix4().makeRotationFromQuaternion(quaternion))
       .multiply(
-        new Matrix4().makeTranslation(0, 0, index - this._sliceWidth / 2)
+        new Matrix4().makeTranslation(0, 0, index - this.sliceWidth / 2)
       );
 
     return sliceMeshMatrix;
@@ -87,7 +84,7 @@ class VolumeSlice {
 
   set min(value) {
     this._min = value;
-    this.material.uniforms["window_min"].value = value;
+    this._material.uniforms["window_min"].value = value;
   }
 
   get max() {
@@ -96,7 +93,7 @@ class VolumeSlice {
 
   set max(value) {
     this._max = value;
-    this.material.uniforms["window_max"].value = value;
+    this._material.uniforms["window_max"].value = value;
   }
 
   get axis() {

@@ -26,6 +26,7 @@ extend({ OrbitControls });
 //     loader.load(url, resolve, onProgress, reject);
 //   });
 // }
+
 const stats = new Stats();
 stats.dom.style.position = "absolute";
 const gui = new dat.GUI();
@@ -108,7 +109,7 @@ const Slices: React.FC<{
     );
     setSlice(slice);
 
-    gui.add(slice, "index", 0, slice._sliceWidth, 1).name("Slice Index");
+    gui.add(slice, "index", 0, slice.sliceWidth, 1).name("Slice Index");
     gui.add(slice, "min", volume.min, volume.max, 1).name("Slice Min");
     gui.add(slice, "max", volume.min, volume.max, 1).name("Slice Max");
 
