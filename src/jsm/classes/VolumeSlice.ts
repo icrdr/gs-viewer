@@ -12,14 +12,13 @@ import { SliceShader } from "../shaders/SliceShader";
 import { VolumeTexture } from "./VolumeTexture";
 
 class VolumeSlice {
-  volume: VolumeTexture;
-  sliceWidth: number;
-  mesh: Mesh;
+  readonly volume: VolumeTexture;
+  readonly sliceWidth: number;
+  readonly mesh: Mesh;
   protected _index: number;
   protected _min: number;
   protected _max: number;
   protected _axis: Vector3;
-  protected _material: ShaderMaterial;
 
   constructor(volume: VolumeTexture, index: number, axis: Vector3) {
     this.volume = volume;
@@ -40,7 +39,7 @@ class VolumeSlice {
     uniforms["window_min"].value = volume.min;
     uniforms["window_max"].value = volume.max;
 
-    this._material = new ShaderMaterial({
+    const material = new ShaderMaterial({
       side: DoubleSide,
       uniforms: uniforms,
       vertexShader: SliceShader.vertexShader,
@@ -49,7 +48,7 @@ class VolumeSlice {
 
     const geometry = new PlaneBufferGeometry(this.sliceWidth, this.sliceWidth);
 
-    this.mesh = new Mesh(geometry, this._material);
+    this.mesh = new Mesh(geometry, material);
     this.mesh.matrixAutoUpdate = false;
     this.mesh.matrix.copy(sliceMeshMatrix);
   }
@@ -84,7 +83,8 @@ class VolumeSlice {
 
   set min(value) {
     this._min = value;
-    this._material.uniforms["window_min"].value = value;
+    const material = this.mesh.material as ShaderMaterial;
+    material.uniforms["window_min"].value = value;
   }
 
   get max() {
@@ -93,7 +93,8 @@ class VolumeSlice {
 
   set max(value) {
     this._max = value;
-    this._material.uniforms["window_max"].value = value;
+    const material = this.mesh.material as ShaderMaterial;
+    material.uniforms["window_max"].value = value;
   }
 
   get axis() {

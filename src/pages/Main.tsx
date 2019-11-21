@@ -51,8 +51,8 @@ const Slices: React.FC<{
 
   const [slice, setSlice] = useState();
   const [cube, setCube] = useState();
-  const sliceRef = useRef<THREE.Object3D>(null);
-  const grpRef = useRef<THREE.Group>(null);
+  const sliceRef = useRef<THREE.Object3D>();
+  const grpRef = useRef<THREE.Group>();
 
   const { camera, gl } = useThree();
 
@@ -227,7 +227,7 @@ const VTKmodel: React.FC<{
   props: object;
 }> = ({ url, gui, ...props }) => {
   const [geo, setGeo] = useState();
-  const meshRef = useRef<THREE.Mesh>(null);
+  const meshRef = useRef<THREE.Mesh>();
   useEffect(() => {
     new VTKLoader().load(url, geo => {
       setGeo(geo);
@@ -260,7 +260,7 @@ const VTKmodel: React.FC<{
 };
 
 const Control: React.FC = () => {
-  const ctlRef = useRef<OrbitControls>(null);
+  const ctlRef = useRef<OrbitControls>();
   const { camera, gl } = useThree();
   useFrame(() => {
     const ctrl = ctlRef.current!;
@@ -276,7 +276,7 @@ const Camera: React.FC<{
   far?: number;
   near?: number;
 }> = props => {
-  const camRef = useRef<THREE.PerspectiveCamera>(null);
+  const camRef = useRef<THREE.PerspectiveCamera>();
   const { setDefaultCamera } = useThree();
 
   useEffect(() => {
@@ -294,7 +294,7 @@ const Camera: React.FC<{
   );
 };
 
-const Main: React.FC =()=> {
+const Main: React.FC = () => {
   const [volume, setVolume] = useState<VolumeTexture>();
   const [flash, setFlash] = useState<boolean>(false);
 
@@ -339,6 +339,6 @@ const Main: React.FC =()=> {
       </Button>
     </>
   );
-}
+};
 
 export default Main;
