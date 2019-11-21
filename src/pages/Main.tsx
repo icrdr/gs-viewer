@@ -26,24 +26,23 @@ extend({ OrbitControls });
 //     loader.load(url, resolve, onProgress, reject);
 //   });
 // }
+const stats = new Stats();
+stats.dom.style.position = "absolute";
+const gui = new dat.GUI();
 
-interface EffectProps {
+const Effect: React.FC<{
   stats: Stats;
-}
-
-const Effect: React.FC<EffectProps> = ({ stats }) => {
+}> = ({ stats }) => {
   useFrame(() => {
     stats.update();
   });
   return null;
 };
 
-interface SlicesProps {
+const Slices: React.FC<{
   volume: VolumeTexture;
   gui: dat.GUI;
-}
-
-const Slices: React.FC<SlicesProps> = ({ volume, gui }) => {
+}> = ({ volume, gui }) => {
   interface cmapColor {
     color: string;
     pos: number;
@@ -69,116 +68,114 @@ const Slices: React.FC<SlicesProps> = ({ volume, gui }) => {
   };
 
   useEffect(() => {
-      const group = grpRef.current!;
-      //cube helper
-      const geometry = new THREE.BoxBufferGeometry(
-        volume.image.width,
-        volume.image.height,
-        volume.image.depth
-      );
-      const can = document.createElement("canvas");
-      can.width = 10;
-      can.height = 1;
-      updateCtx(can, group.userData.color_map);
+    const group = grpRef.current!;
+    //cube helper
+    const geometry = new THREE.BoxBufferGeometry(
+      volume.image.width,
+      volume.image.height,
+      volume.image.depth
+    );
+    const can = document.createElement("canvas");
+    can.width = 10;
+    can.height = 1;
+    updateCtx(can, group.userData.color_map);
 
-      const canvasMap = new THREE.Texture(can);
-      canvasMap.minFilter = THREE.LinearFilter;
-      canvasMap.needsUpdate = true;
+    const canvasMap = new THREE.Texture(can);
+    canvasMap.minFilter = THREE.LinearFilter;
+    canvasMap.needsUpdate = true;
 
-      const uniforms = THREE.UniformsUtils.clone(VolumeShaderA.uniforms);
-      uniforms["cmap"].value = canvasMap;
-      uniforms["volume_data"].value = volume;
-      uniforms["volume_matrix"].value = volume.matrix4;
-      uniforms["window_min"].value = volume.min;
-      uniforms["window_max"].value = volume.max;
+    const uniforms = THREE.UniformsUtils.clone(VolumeShaderA.uniforms);
+    uniforms["cmap"].value = canvasMap;
+    uniforms["volume_data"].value = volume;
+    uniforms["volume_matrix"].value = volume.matrix4;
+    uniforms["window_min"].value = volume.min;
+    uniforms["window_max"].value = volume.max;
 
-      const material = new THREE.ShaderMaterial({
-        uniforms: uniforms,
-        vertexShader: VolumeShaderA.vertexShader,
-        fragmentShader: VolumeShaderA.fragmentShader
+    const material = new THREE.ShaderMaterial({
+      uniforms: uniforms,
+      vertexShader: VolumeShaderA.vertexShader,
+      fragmentShader: VolumeShaderA.fragmentShader
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.applyMatrix(volume.matrix4);
+    setCube(mesh);
+
+    const slice = new VolumeSlice(
+      volume,
+      0,
+      new THREE.Vector3(1, 1, 1).normalize()
+    );
+    setSlice(slice);
+
+    gui.add(slice, "index", 0, slice._sliceWidth, 1).name("Slice Index");
+    gui.add(slice, "min", volume.min, volume.max, 1).name("Slice Min");
+    gui.add(slice, "max", volume.min, volume.max, 1).name("Slice Max");
+
+    gui
+      .add(group.userData, "volume_min", volume.min, volume.max, 1)
+      .name("Volume Min")
+      .onChange(e => {
+        material.uniforms["window_min"].value = e;
+      });
+    gui
+      .add(group.userData, "volume_max", volume.min, volume.max, 1)
+      .name("Volume Max")
+      .onChange(e => {
+        material.uniforms["window_max"].value = e;
       });
 
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.applyMatrix(volume.matrix4);
-      setCube(mesh);
-
-      const slice = new VolumeSlice(
-        volume,
-        0,
-        new THREE.Vector3(1, 1, 1).normalize()
-      );
-      setSlice(slice);
-
-      gui.add(slice, "index", 0, slice._sliceWidth, 1).name("Slice Index");
-      gui.add(slice, "min", volume.min, volume.max, 1).name("Slice Min");
-      gui.add(slice, "max", volume.min, volume.max, 1).name("Slice Max");
-
-      gui
-        .add(group.userData, "volume_min", volume.min, volume.max, 1)
-        .name("Volume Min")
-        .onChange(e => {
-          material.uniforms["window_min"].value = e;
-        });
-      gui
-        .add(group.userData, "volume_max", volume.min, volume.max, 1)
-        .name("Volume Max")
-        .onChange(e => {
-          material.uniforms["window_max"].value = e;
-        });
-
-      gui
-        .add(group.userData, "surface_level", 0, 1, 0.005)
-        .name("Surface Level")
-        .onChange(e => {
-          material.uniforms["level"].value = e;
-        });
-
-      gui.add(group.userData, "followCamera").onChange(e => {
-        group.userData.followCamera = e;
+    gui
+      .add(group.userData, "surface_level", 0, 1, 0.005)
+      .name("Surface Level")
+      .onChange(e => {
+        material.uniforms["level"].value = e;
       });
 
-      group.userData.color_map.forEach((e: object, i: number) => {
-        gui.addColor(e, "color").onChange(v => {
+    gui.add(group.userData, "followCamera").onChange(e => {
+      group.userData.followCamera = e;
+    });
+
+    group.userData.color_map.forEach((e: object, i: number) => {
+      gui.addColor(e, "color").onChange(v => {
+        const cmap = group.userData.color_map;
+        cmap[i].color = v;
+        updateCtx(can, cmap);
+        material.uniforms["cmap"].value.needsUpdate = true;
+      });
+      gui.add(e, "pos", 0, 1, 0.01).onChange(v => {
+        const cmap = group.userData.color_map;
+        cmap[i].pos = v;
+        updateCtx(can, cmap);
+        material.uniforms["cmap"].value.needsUpdate = true;
+      });
+    });
+
+    const addColor = () => {
+      group.userData.color_map.push({
+        color: "#ffae23",
+        pos: 0.0
+      });
+
+      const index = group.userData.color_map.length;
+      gui.addColor(group.userData.color_map[index - 1], "color").onChange(v => {
+        const cmap = group.userData.color_map;
+        cmap[index - 1].color = v;
+        updateCtx(can, cmap);
+        material.uniforms["cmap"].value.needsUpdate = true;
+      });
+      gui
+        .add(group.userData.color_map[index - 1], "pos", 0, 1, 0.01)
+        .onChange(v => {
           const cmap = group.userData.color_map;
-          cmap[i].color = v;
+          cmap[index - 1].pos = v;
           updateCtx(can, cmap);
           material.uniforms["cmap"].value.needsUpdate = true;
         });
-        gui.add(e, "pos", 0, 1, 0.01).onChange(v => {
-          const cmap = group.userData.color_map;
-          cmap[i].pos = v;
-          updateCtx(can, cmap);
-          material.uniforms["cmap"].value.needsUpdate = true;
-        });
-      });
+    };
 
-      const addColor = () => {
-        group.userData.color_map.push({
-          color: "#ffae23",
-          pos: 0.0
-        });
-
-        const index = group.userData.color_map.length;
-        gui
-          .addColor(group.userData.color_map[index - 1], "color")
-          .onChange(v => {
-            const cmap = group.userData.color_map;
-            cmap[index - 1].color = v;
-            updateCtx(can, cmap);
-            material.uniforms["cmap"].value.needsUpdate = true;
-          });
-        gui
-          .add(group.userData.color_map[index - 1], "pos", 0, 1, 0.01)
-          .onChange(v => {
-            const cmap = group.userData.color_map;
-            cmap[index - 1].pos = v;
-            updateCtx(can, cmap);
-            material.uniforms["cmap"].value.needsUpdate = true;
-          });
-      };
-
-      group.userData["explode"] = addColor;
-      gui.add(group.userData, "explode");
+    group.userData["explode"] = addColor;
+    gui.add(group.userData, "explode");
     // eslint-disable-next-line
   }, []);
 
@@ -223,13 +220,11 @@ const Slices: React.FC<SlicesProps> = ({ volume, gui }) => {
   );
 };
 
-interface VTKmodelProps {
+const VTKmodel: React.FC<{
   url: string;
   gui: dat.GUI;
   props: object;
-}
-
-const VTKmodel: React.FC<VTKmodelProps> = ({ url, gui, ...props }) => {
+}> = ({ url, gui, ...props }) => {
   const [geo, setGeo] = useState();
   const meshRef = useRef<THREE.Mesh>(null);
   useEffect(() => {
@@ -263,25 +258,23 @@ const VTKmodel: React.FC<VTKmodelProps> = ({ url, gui, ...props }) => {
   ) : null;
 };
 
-function Control() {
+const Control: React.FC = () => {
   const ctlRef = useRef<OrbitControls>(null);
   const { camera, gl } = useThree();
   useFrame(() => {
-    const ctrl = ctlRef.current!
+    const ctrl = ctlRef.current!;
     ctrl.update();
   });
 
   return (
     <orbitControls enableDamping ref={ctlRef} args={[camera, gl.domElement]} />
   );
-}
+};
 
-interface cameraProps {
-  far?:number;
-  near?:number
-}
-
-const Camera: React.FC<cameraProps> = props => {
+const Camera: React.FC<{
+  far?: number;
+  near?: number;
+}> = props => {
   const camRef = useRef<THREE.PerspectiveCamera>(null);
   const { setDefaultCamera } = useThree();
 
@@ -300,22 +293,15 @@ const Camera: React.FC<cameraProps> = props => {
   );
 };
 
-export default function Main() {
-  const [volume, setVolume] = useState();
-  const [statsRef, setStatsRef] = useState();
-  const [guiRef, setGuiRef] = useState();
-  const [flash, setFlash] = useState(false);
+const Main: React.FC =()=> {
+  const [volume, setVolume] = useState<VolumeTexture>();
+  const [flash, setFlash] = useState<boolean>(false);
 
   console.log("rerender");
 
   const init = (gl: THREE.WebGLRenderer) => {
-    const stats = new Stats();
-    setStatsRef(stats);
-    gl.domElement.appendChild(stats.dom);
-    stats.dom.style.position = "absolute";
-
-    const gui = new dat.GUI();
-    setGuiRef(gui);
+    const div = gl.domElement.parentElement!;
+    div.appendChild(stats.dom);
 
     gl.gammaOutput = true;
     gl.gammaFactor = 2.2;
@@ -337,8 +323,8 @@ export default function Main() {
         }}
       >
         <Camera near={10} far={100000} />
-        <Effect stats={statsRef} />
-        {volume && <Slices volume={volume} gui={guiRef} />}
+        <Effect stats={stats} />
+        {volume && <Slices volume={volume} gui={gui} />}
         <directionalLight intensity={3} position={[0, 5, 3]} castShadow />
         <hemisphereLight
           intensity={1}
@@ -353,3 +339,5 @@ export default function Main() {
     </>
   );
 }
+
+export default Main;
