@@ -5,10 +5,12 @@ const vert = `
 varying vec3 w_pos;
 varying mat4 vprojectionViewMatrix;
 varying vec2 vUv;
+varying mat4 vmodelMatrix;
 
 void main() {
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); 
   w_pos = (modelMatrix * vec4(position, 1.0)).xyz;
+  vmodelMatrix = modelMatrix;
   vprojectionViewMatrix = projectionMatrix * viewMatrix;
   vUv = uv;
 }
@@ -32,6 +34,7 @@ uniform vec3 box_max;
 varying vec3 w_pos;
 varying mat4 vprojectionViewMatrix;
 varying vec2 vUv;
+varying mat4 vmodelMatrix;
 
 float halfFloatBitsToIntValue(float inputx){
   int step = 0;
@@ -75,9 +78,9 @@ vec3 applyMatrix4(vec3 v3, mat4 m){
 }
 
 vec2 intersect_box(vec3 orig, vec3 dir) {
-	vec3 inv_dir = 1.0 / dir;
-	vec3 tmin_tmp = (box_min - orig) * inv_dir;
-	vec3 tmax_tmp = (box_max - orig) * inv_dir;
+  vec3 inv_dir = 1.0 / dir;
+	vec3 tmin_tmp = (applyMatrix4(box_min, vmodelMatrix) - orig) * inv_dir;
+	vec3 tmax_tmp = (applyMatrix4(box_max, vmodelMatrix) - orig) * inv_dir;
 	vec3 tmin = min(tmin_tmp, tmax_tmp);
 	vec3 tmax = max(tmin_tmp, tmax_tmp);
 	float t0 = max(tmin.x, max(tmin.y, tmin.z));
@@ -87,7 +90,8 @@ vec2 intersect_box(vec3 orig, vec3 dir) {
 
 float getSample(vec3 pos){
   float val;
-  vec3 data_pos = applyMatrix4(pos, inverse(volume_matrix));
+  vec3 ras_pos = applyMatrix4(pos, inverse(vmodelMatrix));
+  vec3 data_pos = applyMatrix4(ras_pos, inverse(volume_matrix));
   data_pos = data_pos/vec3(textureSize(volume_data,0))+vec3(0.5);
   if(data_pos.x>=0.99 || data_pos.x<=0.01 || data_pos.y>=0.99 || data_pos.y<=0.01 || data_pos.z>=0.99 || data_pos.z<=0.01){
     val = 0.0;
@@ -100,7 +104,7 @@ float getSample(vec3 pos){
 
 void main(void) {
   vec4 col;
-  
+
   vec3 ray_dir = normalize(w_pos - cameraPosition);
 
   vec2 t_hit = intersect_box(w_pos, ray_dir);

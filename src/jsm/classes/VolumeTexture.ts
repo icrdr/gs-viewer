@@ -25,4 +25,17 @@ export class VolumeTexture extends DataTexture3D {
     this.min = min;
     this.max = max;
   }
+
+  getDimensions(){
+    const dimensions = new Vector3(this.image.width,
+      this.image.height,
+      this.image.depth)
+    dimensions.applyMatrix4(this.matrix4)
+
+    return new Vector3(
+      Math.abs(dimensions.x),
+      Math.abs(dimensions.y),
+      Math.abs(dimensions.z)
+    );
+  }
 }

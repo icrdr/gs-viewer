@@ -6,38 +6,52 @@ import {
   Quaternion,
   UniformsUtils,
   PlaneBufferGeometry,
-  Vector3
+  Vector3,
+  Texture,
+  Group
 } from "three";
 import { SliceShader } from "../shaders/SliceShader";
 import { VolumeTexture } from "./VolumeTexture";
 
-class VolumeSlice {
-  readonly volume: VolumeTexture;
+export class VolumeSlice extends Group {
+  readonly volumeData: VolumeTexture;
   readonly sliceWidth: number;
-  readonly mesh: Mesh;
+  readonly slice: Mesh;
+
+  protected _colorMap: Texture;
   protected _index: number;
   protected _min: number;
   protected _max: number;
   protected _axis: Vector3;
 
-  constructor(volume: VolumeTexture, index: number, axis: Vector3) {
-    this.volume = volume;
+  constructor(
+    volumeData: VolumeTexture,
+    colorMap: Texture,
+    index: number = 0,
+    axis: Vector3 = new Vector3(0, 0, 1).normalize()
+  ) {
+    super();
+    this.volumeData = volumeData;
     this._index = index;
     this._axis = axis;
-    this._min = volume.min;
-    this._max = volume.max;
+    this._min = volumeData.min;
+    this._max = volumeData.max;
+    this._colorMap = colorMap;
+
+    const dimensions = volumeData.getDimensions();
     this.sliceWidth = new Vector3(
-      volume.image.width,
-      volume.image.height,
-      volume.image.depth
+      dimensions.x,
+      dimensions.y,
+      dimensions.z
     ).length();
 
-    const sliceMeshMatrix = this.computeMatrix(index, axis);
     const uniforms = UniformsUtils.clone(SliceShader.uniforms);
-    uniforms["volume_data"].value = volume;
-    uniforms["volume_matrix"].value = this.volume.matrix4;
-    uniforms["window_min"].value = volume.min;
-    uniforms["window_max"].value = volume.max;
+    uniforms["cmap"].value = colorMap;
+    uniforms["volume_data"].value = volumeData;
+    uniforms["pivot_matrix"].value = this.matrix;
+    uniforms["volume_matrix"].value = this.volumeData.matrix4;
+    uniforms["window_min"].value = volumeData.min;
+    uniforms["window_max"].value = volumeData.max;
 
     const material = new ShaderMaterial({
       side: DoubleSide,
@@ -47,10 +61,12 @@ class VolumeSlice {
     });
 
     const geometry = new PlaneBufferGeometry(this.sliceWidth, this.sliceWidth);
+    this.slice = new Mesh(geometry, material);
+    this.add(this.slice);
 
-    this.mesh = new Mesh(geometry, material);
-    this.mesh.matrixAutoUpdate = false;
-    this.mesh.matrix.copy(sliceMeshMatrix);
+    this.slice.matrixAutoUpdate = false;
+    const sliceMeshMatrix = this.computeMatrix(index, axis);
+    this.slice.matrix.copy(sliceMeshMatrix);
   }
 
   computeMatrix(index: number, axis: Vector3) {
@@ -66,6 +82,12 @@ class VolumeSlice {
     return sliceMeshMatrix;
   }
 
+  updateMatrix() {
+    const material = this.slice.material as ShaderMaterial;
+    material.uniforms["pivot_matrix"].value = this.matrix;
+    super.updateMatrix();
+  }
+  
   get index() {
     return this._index;
   }
@@ -74,7 +96,7 @@ class VolumeSlice {
     this._index = value;
 
     const sliceMeshMatrix = this.computeMatrix(value, this._axis);
-    this.mesh.matrix.copy(sliceMeshMatrix);
+    this.slice.matrix.copy(sliceMeshMatrix);
   }
 
   get min() {
@@ -83,7 +105,7 @@ class VolumeSlice {
 
   set min(value) {
     this._min = value;
-    const material = this.mesh.material as ShaderMaterial;
+    const material = this.slice.material as ShaderMaterial;
     material.uniforms["window_min"].value = value;
   }
 
@@ -93,7 +115,7 @@ class VolumeSlice {
 
   set max(value) {
     this._max = value;
-    const material = this.mesh.material as ShaderMaterial;
+    const material = this.slice.material as ShaderMaterial;
     material.uniforms["window_max"].value = value;
   }
 
@@ -105,8 +127,16 @@ class VolumeSlice {
     this._axis = value;
 
     const sliceMeshMatrix = this.computeMatrix(this._index, value);
-    this.mesh.matrix.copy(sliceMeshMatrix);
+    this.slice.matrix.copy(sliceMeshMatrix);
+  }
+
+  get colorMap() {
+    return this._colorMap;
+  }
+
+  set colorMap(value) {
+    this._colorMap = value;
+    const material = this.slice.material as ShaderMaterial;
+    material.uniforms["cmap"].value = value;
   }
 }
-
-export { VolumeSlice };

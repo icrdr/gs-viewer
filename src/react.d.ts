@@ -3,3 +3,8 @@ declare module JSX {
     orbitControls: any;
   }
 }
+
+declare module 'react-spring/three' {
+  export const useSpring:any;
+  export const a: any;
+}

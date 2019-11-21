@@ -1,23 +1,22 @@
 /* eslint-disable no-unused-vars */
 import React, { useRef, useState, useEffect } from "react";
 import { Canvas, useFrame, extend, useThree } from "react-three-fiber";
-// import { useSpring, a } from "react-spring/three";
-import * as THREE from "three";
-import * as dat from "dat.gui";
+import { useSpring, a } from "react-spring/three";
 import Stats from "stats.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 
 // loader
 import { NRRDLoader } from "../jsm/loaders/NRRDLoader";
 import { VTKLoader } from "three/examples/jsm/loaders/VTKLoader";
-
 import { VolumeSlice } from "../jsm/classes/VolumeSlice";
-import { VolumeShaderA } from "../jsm/shaders/VolumeShaderA";
-import { VolumeShaderB } from "../jsm/shaders/VolumeShaderB";
+import { VolumeContainer } from "../jsm/classes/VolumeContainer";
 
-// react gui
-import { Switch, Button } from "antd";
+import { Button } from "antd";
+
 import { VolumeTexture } from "../jsm/classes/VolumeTexture";
+import { ColorMapTexture } from "../jsm/classes/ColorMapTexture";
+import { GUI } from "dat.gui";
+import { Group, Vector3, PerspectiveCamera, WebGLRenderer, Color } from "three";
 
 extend({ OrbitControls });
 
@@ -29,7 +28,7 @@ extend({ OrbitControls });
 
 const stats = new Stats();
 stats.dom.style.position = "absolute";
-const gui = new dat.GUI();
+const gui = new GUI();
 
 const Effect: React.FC<{
   stats: Stats;
@@ -44,149 +43,76 @@ const Slices: React.FC<{
   volume: VolumeTexture;
   gui: dat.GUI;
 }> = ({ volume, gui }) => {
-  interface cmapColor {
-    color: string;
-    pos: number;
-  }
-
   const [slice, setSlice] = useState();
-  const [cube, setCube] = useState();
-  const sliceRef = useRef<THREE.Object3D>();
-  const grpRef = useRef<THREE.Group>();
-
-  const { camera, gl } = useThree();
-
-  const updateCtx = (can: HTMLCanvasElement, cmap: Array<cmapColor>) => {
-    const ctx = can.getContext("2d")!;
-    const gradient = ctx.createLinearGradient(0, 0, 10, 0);
-
-    cmap.forEach(e => {
-      gradient.addColorStop(e.pos, e.color);
-    });
-
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 10, 1);
-  };
+  const [container, setContainer] = useState();
+  const grpRef = useRef<Group>();
+  const { camera } = useThree();
 
   useEffect(() => {
     const group = grpRef.current!;
-    //cube helper
-    const geometry = new THREE.BoxBufferGeometry(
-      volume.image.width,
-      volume.image.height,
-      volume.image.depth
-    );
-    const can = document.createElement("canvas");
-    can.width = 10;
-    can.height = 1;
-    updateCtx(can, group.userData.color_map);
-
-    const canvasMap = new THREE.Texture(can);
-    canvasMap.minFilter = THREE.LinearFilter;
-    canvasMap.needsUpdate = true;
-
-    const uniforms = THREE.UniformsUtils.clone(VolumeShaderA.uniforms);
-    uniforms["cmap"].value = canvasMap;
-    uniforms["volume_data"].value = volume;
-    uniforms["volume_matrix"].value = volume.matrix4;
-    uniforms["window_min"].value = volume.min;
-    uniforms["window_max"].value = volume.max;
-
-    const material = new THREE.ShaderMaterial({
-      uniforms: uniforms,
-      vertexShader: VolumeShaderA.vertexShader,
-      fragmentShader: VolumeShaderA.fragmentShader
-    });
-
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.applyMatrix(volume.matrix4);
-    setCube(mesh);
-
-    const slice = new VolumeSlice(
-      volume,
-      0,
-      new THREE.Vector3(1, 1, 1).normalize()
-    );
+    const colMap = new ColorMapTexture();
+    const container = new VolumeContainer(volume, colMap);
+    setContainer(container);
+    const slice = new VolumeSlice(volume, colMap);
     setSlice(slice);
 
-    gui.add(slice, "index", 0, slice.sliceWidth, 1).name("Slice Index");
-    gui.add(slice, "min", volume.min, volume.max, 1).name("Slice Min");
-    gui.add(slice, "max", volume.min, volume.max, 1).name("Slice Max");
-
-    gui
-      .add(group.userData, "volume_min", volume.min, volume.max, 1)
-      .name("Volume Min")
-      .onChange(e => {
-        material.uniforms["window_min"].value = e;
-      });
-    gui
-      .add(group.userData, "volume_max", volume.min, volume.max, 1)
-      .name("Volume Max")
-      .onChange(e => {
-        material.uniforms["window_max"].value = e;
-      });
-
-    gui
-      .add(group.userData, "surface_level", 0, 1, 0.005)
-      .name("Surface Level")
-      .onChange(e => {
-        material.uniforms["level"].value = e;
-      });
-
-    gui.add(group.userData, "followCamera").onChange(e => {
+    const f1 = gui.addFolder("Slice");
+    f1.add(slice, "index", 0, slice.sliceWidth, 1).name("Slice Index");
+    f1.add(slice, "min", volume.min, volume.max, 1).name("Slice Min");
+    f1.add(slice, "max", volume.min, volume.max, 1).name("Slice Max");
+    f1.add(group.userData, "followCamera").onChange(e => {
       group.userData.followCamera = e;
     });
 
-    group.userData.color_map.forEach((e: object, i: number) => {
-      gui.addColor(e, "color").onChange(v => {
-        const cmap = group.userData.color_map;
+    const f2 = gui.addFolder("Container");
+    f2.add(container, "level", 0, 1, 0.01).name("Surface Lever");
+    f2.add(container, "min", volume.min, volume.max, 1).name("Volume Min");
+    f2.add(container, "max", volume.min, volume.max, 1).name("Volume Max");
+
+    const f3 = gui.addFolder("Color Map");
+    colMap.colorMapData.forEach((e: object, i: number) => {
+      f3.addColor(e, "color").onChange(v => {
+        const cmap = colMap.colorMapData;
         cmap[i].color = v;
-        updateCtx(can, cmap);
-        material.uniforms["cmap"].value.needsUpdate = true;
+        colMap.colorMapData = cmap;
       });
-      gui.add(e, "pos", 0, 1, 0.01).onChange(v => {
-        const cmap = group.userData.color_map;
+      f3.add(e, "pos", 0, 1, 0.01).onChange(v => {
+        const cmap = colMap.colorMapData;
         cmap[i].pos = v;
-        updateCtx(can, cmap);
-        material.uniforms["cmap"].value.needsUpdate = true;
+        colMap.colorMapData = cmap;
       });
     });
 
     const addColor = () => {
-      group.userData.color_map.push({
+      colMap.colorMapData.push({
         color: "#ffae23",
         pos: 0.0
       });
 
-      const index = group.userData.color_map.length;
-      gui.addColor(group.userData.color_map[index - 1], "color").onChange(v => {
-        const cmap = group.userData.color_map;
-        cmap[index - 1].color = v;
-        updateCtx(can, cmap);
-        material.uniforms["cmap"].value.needsUpdate = true;
+      const length = colMap.colorMapData.length;
+      f3.addColor(colMap.colorMapData[length - 1], "color").onChange(v => {
+        const cmap = colMap.colorMapData;
+        cmap[length - 1].color = v;
+        colMap.colorMapData = cmap;
       });
-      gui
-        .add(group.userData.color_map[index - 1], "pos", 0, 1, 0.01)
-        .onChange(v => {
-          const cmap = group.userData.color_map;
-          cmap[index - 1].pos = v;
-          updateCtx(can, cmap);
-          material.uniforms["cmap"].value.needsUpdate = true;
-        });
+
+      f3.add(colMap.colorMapData[length - 1], "pos", 0, 1, 0.01).onChange(v => {
+        const cmap = colMap.colorMapData;
+        cmap[length - 1].pos = v;
+        colMap.colorMapData = cmap;
+      });
     };
 
-    group.userData["explode"] = addColor;
-    gui.add(group.userData, "explode");
+    group.userData["addColor"] = addColor;
+    f3.add(group.userData, "addColor").name("Add Color");
     // eslint-disable-next-line
   }, []);
 
   useFrame(() => {
-    if (grpRef.current) {
-      var vector = new THREE.Vector3(0, 0, 1);
-      if (grpRef.current.userData.followCamera) {
-        vector.applyQuaternion(camera.quaternion);
-        slice.axis = vector;
-      }
+    const grp = grpRef.current!;
+    if (grp.userData.followCamera) {
+      var vector = new Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
+      slice.axis = vector;
     }
   });
 
@@ -194,21 +120,12 @@ const Slices: React.FC<{
     <group
       ref={grpRef}
       userData={{
-        followCamera: true,
-        surface_level: 0.5,
-        volume_min: volume.min,
-        volume_max: volume.max,
-        color_map: [
-          { color: "#000", pos: 0 },
-          { color: "#fff", pos: 1 }
-        ]
+        followCamera: true
       }}
     >
-      {cube && <boxHelper args={[cube]} />}
-      {cube && <primitive object={cube} renderOrder={1} />}
-      {slice && (
-        <primitive ref={sliceRef} object={slice.mesh} renderOrder={0} />
-      )}
+      {container && <primitive object={container} renderOrder={1} />}
+
+      {slice && <primitive object={slice} renderOrder={0} />}
       {/* <VTKmodel url="./static/models/vtk/liver.vtk" gui={gui} /> */}
       {/* <group
         position={[-volume.offset3.x, -volume.offset3.y, -volume.offset3.z]}
@@ -219,44 +136,6 @@ const Slices: React.FC<{
       </group> */}
     </group>
   );
-};
-
-const VTKmodel: React.FC<{
-  url: string;
-  gui: dat.GUI;
-  props: object;
-}> = ({ url, gui, ...props }) => {
-  const [geo, setGeo] = useState();
-  const meshRef = useRef<THREE.Mesh>();
-  useEffect(() => {
-    new VTKLoader().load(url, geo => {
-      setGeo(geo);
-    });
-    // eslint-disable-next-line
-  }, []);
-
-  useEffect(() => {
-    if (meshRef.current) {
-      console.log(meshRef.current);
-      gui.add(meshRef.current.material, "opacity", 0, 1, 0.01).name("Opacity");
-      gui.add(meshRef.current.material, "transparent").name("transparent");
-    }
-    // eslint-disable-next-line
-  }, [geo]);
-
-  return geo ? (
-    <mesh
-      {...props}
-      ref={meshRef}
-      geometry={geo}
-      material={
-        new THREE.MeshStandardMaterial({
-          color: new THREE.Color("white"),
-          transparent: true
-        })
-      }
-    ></mesh>
-  ) : null;
 };
 
 const Control: React.FC = () => {
@@ -276,7 +155,7 @@ const Camera: React.FC<{
   far?: number;
   near?: number;
 }> = props => {
-  const camRef = useRef<THREE.PerspectiveCamera>();
+  const camRef = useRef<PerspectiveCamera>();
   const { setDefaultCamera } = useThree();
 
   useEffect(() => {
@@ -300,7 +179,7 @@ const Main: React.FC = () => {
 
   console.log("rerender");
 
-  const init = (gl: THREE.WebGLRenderer) => {
+  const init = (gl: WebGLRenderer) => {
     const div = gl.domElement.parentElement!;
     div.appendChild(stats.dom);
 
@@ -329,8 +208,8 @@ const Main: React.FC = () => {
         <directionalLight intensity={3} position={[0, 5, 3]} castShadow />
         <hemisphereLight
           intensity={1}
-          skyColor={new THREE.Color(0xffffbb)}
-          groundColor={new THREE.Color(0x080820)}
+          skyColor={new Color(0xffffbb)}
+          groundColor={new Color(0x080820)}
         />
         <axesHelper args={[50]} position={[0, 0, 0]} />
       </Canvas>

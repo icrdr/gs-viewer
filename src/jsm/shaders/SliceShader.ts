@@ -1,4 +1,4 @@
-import { Matrix4 } from "three";
+import { Matrix4, Texture } from "three";
 import { VolumeTexture } from "../classes/VolumeTexture";
 
 const vert = `
@@ -14,8 +14,10 @@ precision highp int;
 precision highp float;
 precision highp sampler3D;
 
+uniform sampler2D cmap;
 uniform sampler3D volume_data;
 uniform mat4 volume_matrix;
+uniform mat4 pivot_matrix;
 uniform float window_min;
 uniform float window_max;
 
@@ -64,7 +66,8 @@ vec3 applyMatrix4(vec3 v3, mat4 m){
 
 float getSample(vec3 pos){
   float val;
-  vec3 data_pos = applyMatrix4(pos, inverse(volume_matrix));
+  vec3 ras_pos = applyMatrix4(pos, inverse(pivot_matrix));
+  vec3 data_pos = applyMatrix4(ras_pos, inverse(volume_matrix));
   data_pos = data_pos/vec3(textureSize(volume_data,0))+vec3(0.5);
   if(data_pos.x>=1.0 || data_pos.x<=0.0 || data_pos.y>=1.0 || data_pos.y<=0.0 || data_pos.z>=1.0 || data_pos.z<=0.0){
     val = 0.0;
@@ -81,14 +84,16 @@ void main() {
     discard;
   }
 
-  gl_FragColor = vec4(vec3(val),1.0);
+  gl_FragColor = vec4(texture(cmap, vec2(val,0.5)).rgb,1.0);
 }
 `;
 
 const SliceShader = {
   uniforms: {
+    cmap: { value: new Texture() },
     volume_data: { value: new VolumeTexture(new Uint16Array([0]), 1, 1, 1) },
     volume_matrix: { value: new Matrix4() },
+    pivot_matrix: { value: new Matrix4() },
     window_min: { value: 0.0 },
     window_max: { value: 500.0 }
   },
